@@ -1,0 +1,48 @@
+require vss
+
+# Step 0: Open a database
+load __TEST_DIR__/temp_index_hnsw_storage.db
+
+statement ok
+CREATE TABLE t1 (vec FLOAT[3]);
+
+statement ok
+INSERT INTO t1 SELECT array_value(a,b,c) FROM range(1,10) ra(a), range(1,10) rb(b), range(1,10) rc(c);
+
+statement ok
+CREATE INDEX my_idx ON t1 USING HNSW (vec);
+
+# Make sure we get the index scan plan
+query II
+EXPLAIN SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+----
+physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
+
+# Verify results
+query I
+SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+----
+[1.0, 2.0, 3.0]
+[1.0, 3.0, 3.0]
+[1.0, 2.0, 2.0]
+
+# Checkpoint
+statement ok
+CHECKPOINT;
+
+# Restart
+restart
+
+# Make sure we get the index scan plan again
+query II
+EXPLAIN SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+----
+physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
+
+# Verify results again. The index data should still be there
+query I
+SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+----
+[1.0, 2.0, 3.0]
+[1.0, 3.0, 3.0]
+[1.0, 2.0, 2.0]

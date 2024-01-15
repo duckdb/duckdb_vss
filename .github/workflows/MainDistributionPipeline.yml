@@ -18,7 +18,7 @@ jobs:
     with:
       vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
       duckdb_version: v0.9.2
-      extension_name: quack
+      extension_name: vss
 
   duckdb-stable-deploy:
     name: Deploy extension binaries
@@ -27,6 +27,6 @@ jobs:
     secrets: inherit
     with:
       duckdb_version: v0.9.2
-      extension_name: quack
+      extension_name: vss
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
       deploy_versioned: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}

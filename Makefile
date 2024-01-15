@@ -31,12 +31,12 @@ ifeq ($(GEN),ninja)
 	GENERATOR=-G "Ninja" -DFORCE_COLORED_OUTPUT=1
 endif
 
-EXT_NAME=quack
+EXT_NAME=vss
 
 #### Configuration for this extension
-EXTENSION_NAME=QUACK
+EXTENSION_NAME=VSS
 EXTENSION_FLAGS=\
--DDUCKDB_EXTENSION_NAMES="quack" \
+-DDUCKDB_EXTENSION_NAMES="vss" \
 -DDUCKDB_EXTENSION_${EXTENSION_NAME}_PATH="$(PROJ_DIR)" \
 -DDUCKDB_EXTENSION_${EXTENSION_NAME}_LOAD_TESTS=1 \
 -DDUCKDB_EXTENSION_${EXTENSION_NAME}_INCLUDE_PATH="$(PROJ_DIR)src/include" \
@@ -49,7 +49,7 @@ BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 $(EXTENSION_FLAGS) ${EXTRA_EXTENSIONS_FLA
 CLIENT_FLAGS:=
 
 #### Main build
-# For regular CLI build, we link the quack extension directly into the DuckDB executable
+# For regular CLI build, we link the vss extension directly into the DuckDB executable
 CLIENT_FLAGS=-DDUCKDB_EXTENSION_${EXTENSION_NAME}_SHOULD_LINK=1
 
 debug:
@@ -83,8 +83,8 @@ test_debug: debug
 	./build/debug/$(TEST_PATH) "$(PROJ_DIR)test/*"
 
 #### Client tests
-DEBUG_EXT_PATH='$(PROJ_DIR)build/debug/extension/quack/quack.duckdb_extension'
-RELEASE_EXT_PATH='$(PROJ_DIR)build/release/extension/quack/quack.duckdb_extension'
+DEBUG_EXT_PATH='$(PROJ_DIR)build/debug/extension/vss/vss.duckdb_extension'
+RELEASE_EXT_PATH='$(PROJ_DIR)build/release/extension/vss/vss.duckdb_extension'
 test_js: test_debug_js
 test_debug_js: debug_js
 	cd duckdb/tools/nodejs && ${EXTENSION_NAME}_EXTENSION_BINARY_PATH=$(DEBUG_EXT_PATH) npm run test-path -- "../../../test/nodejs/**/*.js"
