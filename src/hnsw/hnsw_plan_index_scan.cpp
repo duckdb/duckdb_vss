@@ -33,19 +33,19 @@ public:
 		// Look for a expression that is a distance expression
 		auto &top_n = op.Cast<LogicalTopN>();
 
-		if(top_n.orders.size() != 1) {
+		if (top_n.orders.size() != 1) {
 			// We can only optimize if there is a single order by expression right now
 			return;
 		}
 
 		auto &order = top_n.orders[0];
 
-		if(order.type != OrderType::ASCENDING) {
+		if (order.type != OrderType::ASCENDING) {
 			// We can only optimize if the order by expression is ascending
 			return;
 		}
 
-		if(order.expression->type != ExpressionType::BOUND_COLUMN_REF) {
+		if (order.expression->type != ExpressionType::BOUND_COLUMN_REF) {
 			// The expression has to reference the child operator (a projection with the distance function)
 			return;
 		}
@@ -53,7 +53,7 @@ public:
 
 		// find the expression that is referenced
 		auto &immediate_child = top_n.children[0];
-		if(immediate_child->type != LogicalOperatorType::LOGICAL_PROJECTION) {
+		if (immediate_child->type != LogicalOperatorType::LOGICAL_PROJECTION) {
 			// The child has to be a projection
 			return;
 		}
@@ -61,15 +61,15 @@ public:
 		auto projection_index = bound_column_ref.binding.column_index;
 
 		auto &bound_function = projection.expressions[projection_index]->Cast<BoundFunctionExpression>();
-		if(bound_function.function.name != "array_distance") {
+		if (bound_function.function.name != "array_distance") {
 			// We can only optimize if the order by expression is a distance function
 			return;
 		}
 		// Figure out the query vector
 		Value target_value;
-		if(bound_function.children[0]->GetExpressionType() == ExpressionType::VALUE_CONSTANT) {
+		if (bound_function.children[0]->GetExpressionType() == ExpressionType::VALUE_CONSTANT) {
 			target_value = bound_function.children[0]->Cast<BoundConstantExpression>().value;
-		} else if(bound_function.children[1]->GetExpressionType() == ExpressionType::VALUE_CONSTANT) {
+		} else if (bound_function.children[1]->GetExpressionType() == ExpressionType::VALUE_CONSTANT) {
 			target_value = bound_function.children[1]->Cast<BoundConstantExpression>().value;
 		} else {
 			// We can only optimize if one of the children is a constant
@@ -80,16 +80,16 @@ public:
 		// that matches the column that the index is on. That also helps us identify the scan operator
 
 		auto value_type = target_value.type();
-		if(value_type.id() != LogicalTypeId::ARRAY) {
+		if (value_type.id() != LogicalTypeId::ARRAY) {
 			// We can only optimize if the constant is an array
 			return;
 		}
 		auto array_size = ArrayType::GetSize(value_type);
 		auto array_inner_type = ArrayType::GetChildType(value_type);
-		if(array_inner_type.id() != LogicalTypeId::FLOAT) {
+		if (array_inner_type.id() != LogicalTypeId::FLOAT) {
 			// Try to cast to float
 			bool ok = target_value.DefaultTryCastAs(LogicalType::ARRAY(LogicalType::FLOAT, array_size), true);
-			if(!ok) {
+			if (!ok) {
 				// We can only optimize if the array is of floats or we can cast it to floats
 				return;
 			}
@@ -99,7 +99,7 @@ public:
 		auto child = top_n.children[0].get();
 		while (child->type != LogicalOperatorType::LOGICAL_GET) {
 			// TODO: Handle joins?
-			if(child->children.size() != 1) {
+			if (child->children.size() != 1) {
 				// Either 0 or more than 1 child
 				return;
 			}
@@ -108,7 +108,7 @@ public:
 
 		auto &get = child->Cast<LogicalGet>();
 		// Check if the get is a table scan
-		if(get.function.name != "seq_scan") {
+		if (get.function.name != "seq_scan") {
 			return;
 		}
 
@@ -117,7 +117,7 @@ public:
 
 		// Get the table
 		auto &table = *get.GetTable();
-		if(!table.IsDuckTable()) {
+		if (!table.IsDuckTable()) {
 			// We can only replace the scan if the table is a duck table
 			return;
 		}
@@ -130,11 +130,11 @@ public:
 
 		// Find the index
 		unique_ptr<HNSWIndexScanBindData> bind_data = nullptr;
-		table_info->indexes.Scan([&](Index& index_entry) {
-			if(index_entry.index_type == HNSWIndex::TYPE_NAME) {
+		table_info->indexes.Scan([&](Index &index_entry) {
+			if (index_entry.index_type == HNSWIndex::TYPE_NAME) {
 				auto &hnsw_index = index_entry.Cast<HNSWIndex>();
 
-				if(hnsw_index.GetVectorSize() != array_size) {
+				if (hnsw_index.GetVectorSize() != array_size) {
 					// The vector size of the index does not match the vector size of the query
 					return false;
 				}
@@ -142,18 +142,19 @@ public:
 				// Create a query vector from the constant value
 				auto query_vector = make_unsafe_uniq_array<float>(array_size);
 				auto vector_elements = ArrayValue::GetChildren(target_value);
-				for(idx_t i = 0; i < array_size; i++) {
+				for (idx_t i = 0; i < array_size; i++) {
 					query_vector[i] = vector_elements[i].GetValue<float>();
 				}
 
 				// Create the bind data for this index
-				bind_data = make_uniq<HNSWIndexScanBindData>(duck_table, index_entry, top_n.limit, std::move(query_vector));
+				bind_data =
+				    make_uniq<HNSWIndexScanBindData>(duck_table, index_entry, top_n.limit, std::move(query_vector));
 				return true;
 			}
 			return false;
 		});
 
-		if(!bind_data) {
+		if (!bind_data) {
 			// No index found
 			return;
 		}
@@ -161,7 +162,6 @@ public:
 		// Replace the scan with our custom index scan function
 		get.bind_data = std::move(bind_data);
 		get.function = HNSWIndexScanFunction::GetFunction();
-
 
 		// TODO: This only works as long as we only have one order expression
 		// Remove the order from the projection
@@ -201,4 +201,4 @@ void HNSWModule::RegisterPlanIndexScan(DatabaseInstance &db) {
 	db.config.optimizer_extensions.push_back(HNSWIndexScanOptimizer());
 }
 
-}
+} // namespace duckdb

@@ -20,4 +20,4 @@ private:
 	static void RegisterPlanIndexCreate(DatabaseInstance &db);
 };
 
-}
+} // namespace duckdb

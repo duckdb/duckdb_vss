@@ -36,4 +36,4 @@ struct HNSWIndexScanFunction {
 	static TableFunction GetFunction();
 };
 
-}
+} // namespace duckdb

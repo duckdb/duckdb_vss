@@ -13,8 +13,7 @@
 namespace duckdb {
 
 LogicalCreateHNSWIndex::LogicalCreateHNSWIndex(unique_ptr<CreateIndexInfo> info_p,
-                                                   vector<unique_ptr<Expression>> expressions_p,
-                                                   TableCatalogEntry &table_p)
+                                               vector<unique_ptr<Expression>> expressions_p, TableCatalogEntry &table_p)
     : LogicalExtensionOperator(), info(std::move(info_p)), table(table_p) {
 	for (auto &expr : expressions_p) {
 		this->unbound_expressions.push_back(expr->Copy());
@@ -39,7 +38,7 @@ string LogicalCreateHNSWIndex::GetExtensionName() const {
 }
 
 unique_ptr<PhysicalOperator> LogicalCreateHNSWIndex::CreatePlan(ClientContext &context,
-                                                                  PhysicalPlanGenerator &generator) {
+                                                                PhysicalPlanGenerator &generator) {
 
 	auto &op = *this;
 
@@ -48,9 +47,8 @@ unique_ptr<PhysicalOperator> LogicalCreateHNSWIndex::CreatePlan(ClientContext &c
 	D_ASSERT(op.children.size() == 1);
 	auto table_scan = generator.CreatePlan(std::move(op.children[0]));
 
-
 	// Validate that we only have one expression
-	if(op.unbound_expressions.size() != 1) {
+	if (op.unbound_expressions.size() != 1) {
 		throw BinderException("HNSW indexes can only be created over a single column of keys.");
 	}
 
@@ -59,7 +57,7 @@ unique_ptr<PhysicalOperator> LogicalCreateHNSWIndex::CreatePlan(ClientContext &c
 	// Validate that the expression does not have side effects
 	if (expr->HasSideEffects()) {
 		throw BinderException("HNSW index keys cannot contain expressions with side "
-								"effects.");
+		                      "effects.");
 	}
 
 	// Validate that we have the right type of expression (float array)
@@ -111,11 +109,11 @@ unique_ptr<PhysicalOperator> LogicalCreateHNSWIndex::CreatePlan(ClientContext &c
 
 	auto physical_create_index =
 	    make_uniq<PhysicalCreateHNSWIndex>(op, op.table, op.info->column_ids, std::move(op.info),
-	                                         std::move(op.unbound_expressions), op.estimated_cardinality);
+	                                       std::move(op.unbound_expressions), op.estimated_cardinality);
 
 	physical_create_index->children.push_back(std::move(null_filter));
 
 	return std::move(physical_create_index);
 }
 
-}
+} // namespace duckdb

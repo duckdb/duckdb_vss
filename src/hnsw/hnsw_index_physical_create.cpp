@@ -11,23 +11,20 @@
 
 namespace duckdb {
 
-PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatalogEntry &table, const vector<column_t> &column_ids,
-                                                     unique_ptr<CreateIndexInfo> info, vector<unique_ptr<Expression>> unbound_expressions,
-                                                     idx_t estimated_cardinality)
+PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatalogEntry &table,
+                                                 const vector<column_t> &column_ids, unique_ptr<CreateIndexInfo> info,
+                                                 vector<unique_ptr<Expression>> unbound_expressions,
+                                                 idx_t estimated_cardinality)
     // Declare this operators as a EXTENSION operator
     : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, estimated_cardinality),
-      table(table.Cast<DuckTableEntry>()),
-      info(std::move(info)),
-      unbound_expressions(std::move(unbound_expressions)),
-      sorted(false)
-{
+      table(table.Cast<DuckTableEntry>()), info(std::move(info)), unbound_expressions(std::move(unbound_expressions)),
+      sorted(false) {
 
 	// convert virtual column ids to storage column ids
 	for (auto &column_id : column_ids) {
 		storage_ids.push_back(table.GetColumns().LogicalToPhysical(LogicalIndex(column_id)).index);
 	}
 }
-
 
 //-------------------------------------------------------------
 // Global State
@@ -47,7 +44,8 @@ unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientCo
 	auto &constraint_type = info->constraint_type;
 	auto &db = storage.db;
 
-	gstate->global_index = make_uniq<HNSWIndex>(info->index_name, constraint_type, storage_ids, table_manager, unbound_expressions, db);
+	gstate->global_index =
+	    make_uniq<HNSWIndex>(info->index_name, constraint_type, storage_ids, table_manager, unbound_expressions, db);
 
 	return std::move(gstate);
 }
@@ -55,9 +53,7 @@ unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientCo
 //-------------------------------------------------------------
 // Local State
 //-------------------------------------------------------------
-class CreateHNSWIndexLocalState : public LocalSinkState {
-
-};
+class CreateHNSWIndexLocalState : public LocalSinkState {};
 
 unique_ptr<LocalSinkState> PhysicalCreateHNSWIndex::GetLocalSinkState(ExecutionContext &context) const {
 	auto state = make_uniq<CreateHNSWIndexLocalState>();
@@ -65,20 +61,20 @@ unique_ptr<LocalSinkState> PhysicalCreateHNSWIndex::GetLocalSinkState(ExecutionC
 	return std::move(state);
 }
 
-
 //-------------------------------------------------------------
 // Sink
 //-------------------------------------------------------------
 
-SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChunk &chunk, OperatorSinkInput &input) const {
+SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChunk &chunk,
+                                             OperatorSinkInput &input) const {
 	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
 	auto &index = gstate.global_index->Cast<HNSWIndex>();
 
-	if(chunk.ColumnCount() != 2) {
+	if (chunk.ColumnCount() != 2) {
 		throw NotImplementedException("Custom index creation only supported for single-column indexes");
 	}
 
-	//if(key_column.GetType().InternalType() != PhysicalType::INT32) {
+	// if(key_column.GetType().InternalType() != PhysicalType::INT32) {
 	//	throw NotImplementedException("Custom index creation only supported for INT32 keys");
 	//}
 
@@ -93,7 +89,8 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 //-------------------------------------------------------------
 // Combine
 //-------------------------------------------------------------
-SinkCombineResultType PhysicalCreateHNSWIndex::Combine(ExecutionContext &context, OperatorSinkCombineInput &input) const {
+SinkCombineResultType PhysicalCreateHNSWIndex::Combine(ExecutionContext &context,
+                                                       OperatorSinkCombineInput &input) const {
 	return SinkCombineResultType::FINISHED;
 }
 
@@ -101,7 +98,7 @@ SinkCombineResultType PhysicalCreateHNSWIndex::Combine(ExecutionContext &context
 // Finalize
 //-------------------------------------------------------------
 SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &event, ClientContext &context,
-                                                     OperatorSinkFinalizeInput &input) const {
+                                                   OperatorSinkFinalizeInput &input) const {
 
 	// Get the global index we created
 	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
@@ -113,11 +110,11 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	// Check that the table hasnt been altered in the meantime
 	auto &storage = table.GetStorage();
 
-        // If not in memory, persist the index to disk
-        if(!storage.db.GetStorageManager().InMemory()) {
-              // Finalize the index
-              gstate.global_index->Cast<HNSWIndex>().PersistToDisk();
-        }
+	// If not in memory, persist the index to disk
+	if (!storage.db.GetStorageManager().InMemory()) {
+		// Finalize the index
+		gstate.global_index->Cast<HNSWIndex>().PersistToDisk();
+	}
 
 	if (!storage.IsRoot()) {
 		throw TransactionException("Cannot create index on non-root transaction");
@@ -127,7 +124,7 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	auto &schema = table.schema;
 	info->column_ids = storage_ids;
 	auto index_entry = schema.CreateIndex(context, *info, table).get();
-	if(!index_entry) {
+	if (!index_entry) {
 		D_ASSERT(info->on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT);
 		// index already exists, but error ignored because of IF NOT EXISTS
 		return SinkFinalizeType::READY;
@@ -147,4 +144,4 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	return SinkFinalizeType::READY;
 }
 
-}
+} // namespace duckdb

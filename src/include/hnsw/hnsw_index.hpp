@@ -2,16 +2,15 @@
 
 #include "duckdb/storage/index.hpp"
 #include "duckdb/common/array.hpp"
+#include "duckdb/execution/index/index_pointer.hpp"
+#include "duckdb/execution/index/fixed_size_allocator.hpp"
 
 #include "usearch/index_dense.hpp"
 
 namespace duckdb {
 
-class FixedSizeAllocator;
-
 class HNSWIndex : public Index {
 public:
-
 	// The type name of the HNSWIndex
 	static constexpr const char *TYPE_NAME = "HNSW";
 
@@ -24,7 +23,10 @@ public:
 	unum::usearch::index_dense_t index;
 
 	//! Block pointer to the root of the index
-	BlockPointer root_block_ptr;
+	IndexPointer root_block_ptr;
+
+	//! The allocator used to persist linked blocks
+	unique_ptr<FixedSizeAllocator> linked_block_allocator;
 
 	unique_ptr<IndexScanState> InitializeScan(float *query_vector, idx_t limit) const;
 	idx_t Scan(IndexScanState &state, Vector &result);
@@ -70,4 +72,4 @@ public:
 	}
 };
 
-}
+} // namespace duckdb

@@ -21,23 +21,21 @@ public:
 		auto &op = *plan;
 
 		// Look for a CREATE INDEX operator
-		if(op.type != LogicalOperatorType::LOGICAL_CREATE_INDEX) {
+		if (op.type != LogicalOperatorType::LOGICAL_CREATE_INDEX) {
 			return;
 		}
 		auto &create_index = op.Cast<LogicalCreateIndex>();
 
-		if(create_index.info->index_type != HNSWIndex::TYPE_NAME) {
+		if (create_index.info->index_type != HNSWIndex::TYPE_NAME) {
 			// Not the index type we are looking for
 			return;
 		}
-
 
 		// We have a create index operator for our index
 		// We can replace this with a operator that creates the index
 		// The "LogicalCreateHNSWINdex" operator is a custom operator that we defined in the extension
 		auto physical_create_index = make_uniq<LogicalCreateHNSWIndex>(
-		    std::move(create_index.info),
-		    std::move(create_index.expressions), create_index.table);
+		    std::move(create_index.info), std::move(create_index.expressions), create_index.table);
 
 		// Move the children
 		physical_create_index->children = std::move(create_index.children);
@@ -65,4 +63,4 @@ void HNSWModule::RegisterPlanIndexCreate(DatabaseInstance &db) {
 	db.config.optimizer_extensions.push_back(HNSWIndexInsertionRewriter());
 }
 
-}
+} // namespace duckdb

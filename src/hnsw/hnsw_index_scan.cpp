@@ -36,7 +36,8 @@ struct HNSWIndexScanGlobalState : public GlobalTableFunctionState {
 	Vector row_ids = Vector(LogicalType::ROW_TYPE);
 };
 
-static unique_ptr<GlobalTableFunctionState> HNSWIndexScanInitGlobal(ClientContext &context, TableFunctionInitInput &input) {
+static unique_ptr<GlobalTableFunctionState> HNSWIndexScanInitGlobal(ClientContext &context,
+                                                                    TableFunctionInitInput &input) {
 	auto &bind_data = input.bind_data->Cast<HNSWIndexScanBindData>();
 
 	auto result = make_uniq<HNSWIndexScanGlobalState>();
@@ -48,7 +49,7 @@ static unique_ptr<GlobalTableFunctionState> HNSWIndexScanInitGlobal(ClientContex
 	// Figure out the storage column ids
 	for (auto &id : input.column_ids) {
 		storage_t col_id = id;
-		if(id != DConstants::INVALID_INDEX) {
+		if (id != DConstants::INVALID_INDEX) {
 			col_id = bind_data.table.GetColumn(LogicalIndex(id)).StorageOid();
 		}
 		result->column_ids.push_back(col_id);
@@ -75,21 +76,22 @@ static void HNSWIndexScanExecute(ClientContext &context, TableFunctionInput &dat
 
 	// Scan the index for row id's
 	auto row_count = bind_data.index.Cast<HNSWIndex>().Scan(*state.index_state, state.row_ids);
-	if(row_count == 0){
+	if (row_count == 0) {
 		// Short-circuit if the index had no more rows
 		output.SetCardinality(0);
 		return;
 	}
 
 	// Fetch the data from the local storage given the row ids
-	bind_data.table.GetStorage().Fetch(transaction, output, state.column_ids, state.row_ids, row_count, state.fetch_state);
+	bind_data.table.GetStorage().Fetch(transaction, output, state.column_ids, state.row_ids, row_count,
+	                                   state.fetch_state);
 }
 
 //-------------------------------------------------------------------------
 // Statistics
 //-------------------------------------------------------------------------
 static unique_ptr<BaseStatistics> HNSWIndexScanStatistics(ClientContext &context, const FunctionData *bind_data_p,
-                                                            column_t column_id) {
+                                                          column_t column_id) {
 	auto &bind_data = bind_data_p->Cast<HNSWIndexScanBindData>();
 	auto &local_storage = LocalStorage::Get(context, bind_data.table.catalog);
 	if (local_storage.Find(bind_data.table.GetStorage())) {
@@ -156,5 +158,4 @@ void HNSWModule::RegisterIndexScan(DatabaseInstance &db) {
 	ExtensionUtil::RegisterFunction(db, HNSWIndexScanFunction::GetFunction());
 }
 
-
-}
+} // namespace duckdb

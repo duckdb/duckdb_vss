@@ -12,10 +12,9 @@
 
 namespace duckdb {
 
-
 static void LoadInternal(DatabaseInstance &instance) {
-    // Register the HNSW index module
-    HNSWModule::Register(instance);
+	// Register the HNSW index module
+	HNSWModule::Register(instance);
 }
 
 void VssExtension::Load(DuckDB &db) {
@@ -31,8 +30,8 @@ std::string VssExtension::Name() {
 extern "C" {
 
 DUCKDB_EXTENSION_API void vss_init(duckdb::DatabaseInstance &db) {
-    duckdb::DuckDB db_wrapper(db);
-    db_wrapper.LoadExtension<duckdb::VssExtension>();
+	duckdb::DuckDB db_wrapper(db);
+	db_wrapper.LoadExtension<duckdb::VssExtension>();
 }
 
 DUCKDB_EXTENSION_API const char *vss_version() {
