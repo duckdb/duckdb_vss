@@ -5,7 +5,7 @@
 #include "duckdb/execution/index/index_pointer.hpp"
 #include "duckdb/execution/index/fixed_size_allocator.hpp"
 
-#include "usearch/index_dense.hpp"
+#include "usearch/duckdb_usearch.hpp"
 
 namespace duckdb {
 
