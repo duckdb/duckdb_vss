@@ -8,6 +8,7 @@
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/storage/storage_manager.hpp"
+#include "duckdb/common/exception/transaction_exception.hpp"
 
 namespace duckdb {
 
@@ -133,7 +134,7 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	// Get the entry as a DuckIndexEntry
 	auto &index = index_entry->Cast<DuckIndexEntry>();
 	index.initial_index_size = gstate.global_index->GetInMemorySize();
-	index.info = storage.info;
+	index.info = make_uniq<IndexDataTableInfo>(storage.info, index.name);
 	for (auto &parsed_expr : info->parsed_expressions) {
 		index.parsed_expressions.push_back(parsed_expr->Copy());
 	}

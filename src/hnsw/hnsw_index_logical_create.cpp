@@ -55,7 +55,7 @@ unique_ptr<PhysicalOperator> LogicalCreateHNSWIndex::CreatePlan(ClientContext &c
 	auto &expr = op.unbound_expressions[0];
 
 	// Validate that the expression does not have side effects
-	if (expr->HasSideEffects()) {
+	if (!expr->IsConsistent()) {
 		throw BinderException("HNSW index keys cannot contain expressions with side "
 		                      "effects.");
 	}

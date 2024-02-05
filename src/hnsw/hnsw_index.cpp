@@ -139,10 +139,19 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 
 	// Get the size of the vector
 	auto vector_size = ArrayType::GetSize(vector_type);
+	auto vector_child_type = ArrayType::GetChildType(vector_type);
+
+	auto scalar_kind = unum::usearch::scalar_kind_t::f32_k;
+	if(vector_child_type.id() == LogicalTypeId::FLOAT) {
+		scalar_kind = unum::usearch::scalar_kind_t::f32_k;
+	} else if(vector_child_type.id() == LogicalTypeId::DOUBLE) {
+		scalar_kind = unum::usearch::scalar_kind_t::f64_k;
+	} else {
+		throw BinderException("HNSW index can only be created over FLOAT[N] or DOUBLE[N] keys.");
+	}
 
 	// Create the usearch index
-	unum::usearch::metric_punned_t metric(vector_size, unum::usearch::metric_kind_t::l2sq_k,
-	                                      unum::usearch::scalar_kind_t::f32_k);
+	unum::usearch::metric_punned_t metric(vector_size, unum::usearch::metric_kind_t::l2sq_k, scalar_kind);
 	index = unum::usearch::index_dense_t::make(metric);
 
 	// Is this a new index or an existing index?
@@ -237,11 +246,11 @@ void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &row_ids_vector
 	throw NotImplementedException("Cannot update a HNSW index after it has been created");
 }
 
-PreservedError HNSWIndex::Insert(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
+ErrorData HNSWIndex::Insert(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
 	throw NotImplementedException("Cannot update a HNSW index after it has been created");
 }
 
-PreservedError HNSWIndex::Append(IndexLock &lock, DataChunk &entries, Vector &row_identifiers) {
+ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &entries, Vector &row_identifiers) {
 	throw NotImplementedException("Cannot update a HNSW index after it has been created");
 }
 
@@ -317,12 +326,11 @@ void HNSWModule::RegisterIndex(DatabaseInstance &db) {
 
 	IndexType index_type;
 	index_type.name = HNSWIndex::TYPE_NAME;
+
 	index_type.create_instance =
-	    [](const string &name, const IndexConstraintType index_constraint_type, const vector<column_t> &column_ids,
-	       const vector<unique_ptr<Expression>> &unbound_expressions, TableIOManager &table_io_manager,
-	       AttachedDatabase &db, const IndexStorageInfo &storage_info) -> unique_ptr<Index> {
-		auto res = make_uniq<HNSWIndex>(name, index_constraint_type, column_ids, table_io_manager, unbound_expressions,
-		                                db, storage_info);
+	    [](CreateIndexInput &input) -> unique_ptr<Index> {
+		auto res = make_uniq<HNSWIndex>(input.name, input.constraint_type, input.column_ids, input.table_io_manager, input.unbound_expressions,
+		                                input.db, input.storage_info);
 		return std::move(res);
 	};
 

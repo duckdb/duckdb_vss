@@ -31,6 +31,15 @@ public:
 			return;
 		}
 
+		// Verify the options
+		for (auto &opt : create_index.info->options) {
+			if (opt.first == "dimensions") {
+				if (opt.second.type() != LogicalType::INTEGER) {
+					throw BinderException("HNSW index dimensions must be an integer.");
+				}
+			}
+		}
+
 		// We have a create index operator for our index
 		// We can replace this with a operator that creates the index
 		// The "LogicalCreateHNSWINdex" operator is a custom operator that we defined in the extension
