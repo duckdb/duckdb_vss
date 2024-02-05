@@ -32,12 +32,41 @@ public:
 		}
 
 		// Verify the options
-		for (auto &opt : create_index.info->options) {
-			if (opt.first == "dimensions") {
-				if (opt.second.type() != LogicalType::INTEGER) {
-					throw BinderException("HNSW index dimensions must be an integer.");
+		for (auto &option : create_index.info->options) {
+			auto &k = option.first;
+			auto &v = option.second;
+			if (StringUtil::CIEquals(k, "metric")) {
+				if (v.type() != LogicalType::VARCHAR) {
+					throw BinderException("HNSW index metric must be a string");
+				}
+				auto metric = v.GetValue<string>();
+				if (HNSWIndex::METRIC_KIND_MAP.find(metric) == HNSWIndex::METRIC_KIND_MAP.end()) {
+					vector<string> allowed_metrics;
+					for (auto &entry : HNSWIndex::METRIC_KIND_MAP) {
+						allowed_metrics.push_back(StringUtil::Format("'%s'", entry.first));
+					}
+					throw BinderException("HNSW index metric must be one of: %s",
+					                      StringUtil::Join(allowed_metrics, ", "));
 				}
 			}
+		}
+
+		// Verify the expression type
+		if (create_index.expressions.size() != 1) {
+			throw BinderException("HNSW indexes can only be created over a single column of keys.");
+		}
+		auto &arr_type = create_index.expressions[0]->return_type;
+		if (arr_type.id() != LogicalTypeId::ARRAY) {
+			throw BinderException("HNSW index keys must be of type FLOAT[N]");
+		}
+		auto &child_type = ArrayType::GetChildType(arr_type);
+		auto child_type_val = HNSWIndex::SCALAR_KIND_MAP.find(child_type.id());
+		if (child_type_val == HNSWIndex::SCALAR_KIND_MAP.end()) {
+			vector<string> allowed_types;
+			for (auto &entry : HNSWIndex::SCALAR_KIND_MAP) {
+				allowed_types.push_back(StringUtil::Format("'%s[N]'", LogicalType(entry.first).ToString()));
+			}
+			throw BinderException("HNSW index key type must be one of: %s", StringUtil::Join(allowed_types, ", "));
 		}
 
 		// We have a create index operator for our index

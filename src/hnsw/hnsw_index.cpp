@@ -121,7 +121,7 @@ public:
 // Constructor
 HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_type, const vector<column_t> &column_ids,
                      TableIOManager &table_io_manager, const vector<unique_ptr<Expression>> &unbound_expressions,
-                     AttachedDatabase &db, const IndexStorageInfo &info)
+                     AttachedDatabase &db, const case_insensitive_map_t<Value> &options, const IndexStorageInfo &info)
     : Index(name, TYPE_NAME, index_constraint_type, column_ids, table_io_manager, unbound_expressions, db) {
 
 	if (index_constraint_type != IndexConstraintType::NONE) {
@@ -141,17 +141,25 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 	auto vector_size = ArrayType::GetSize(vector_type);
 	auto vector_child_type = ArrayType::GetChildType(vector_type);
 
+	// Get the scalar kind from the array child type. This parameter should be verified during binding.
 	auto scalar_kind = unum::usearch::scalar_kind_t::f32_k;
-	if(vector_child_type.id() == LogicalTypeId::FLOAT) {
-		scalar_kind = unum::usearch::scalar_kind_t::f32_k;
-	} else if(vector_child_type.id() == LogicalTypeId::DOUBLE) {
-		scalar_kind = unum::usearch::scalar_kind_t::f64_k;
-	} else {
-		throw BinderException("HNSW index can only be created over FLOAT[N] or DOUBLE[N] keys.");
+	auto scalar_kind_val = SCALAR_KIND_MAP.find(vector_child_type.id());
+	if (scalar_kind_val != SCALAR_KIND_MAP.end()) {
+		scalar_kind = scalar_kind_val->second;
+	}
+
+	// Try to get the vector metric from the options, this parameter should be verified during binding.
+	auto metric_kind = unum::usearch::metric_kind_t::l2sq_k;
+	auto metric_kind_opt = options.find("metric");
+	if (metric_kind_opt != options.end()) {
+		auto metric_kind_val = METRIC_KIND_MAP.find(metric_kind_opt->second.GetValue<string>());
+		if (metric_kind_val != METRIC_KIND_MAP.end()) {
+			metric_kind = metric_kind_val->second;
+		}
 	}
 
 	// Create the usearch index
-	unum::usearch::metric_punned_t metric(vector_size, unum::usearch::metric_kind_t::l2sq_k, scalar_kind);
+	unum::usearch::metric_punned_t metric(vector_size, metric_kind, scalar_kind);
 	index = unum::usearch::index_dense_t::make(metric);
 
 	// Is this a new index or an existing index?
@@ -174,6 +182,30 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 idx_t HNSWIndex::GetVectorSize() const {
 	return index.dimensions();
 }
+
+const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIND_MAP = {
+    {"ls2sq", unum::usearch::metric_kind_t::l2sq_k},
+    {"cosine", unum::usearch::metric_kind_t::cos_k},
+    {"divergence", unum::usearch::metric_kind_t::divergence_k},
+    {"hamming", unum::usearch::metric_kind_t::hamming_k},
+    {"jaccard", unum::usearch::metric_kind_t::jaccard_k},
+    {"haversine", unum::usearch::metric_kind_t::haversine_k},
+    {"ip", unum::usearch::metric_kind_t::ip_k},
+    {"pearson", unum::usearch::metric_kind_t::pearson_k},
+    {"sorensen", unum::usearch::metric_kind_t::sorensen_k},
+    {"tanimoto", unum::usearch::metric_kind_t::tanimoto_k}};
+
+const unordered_map<LogicalTypeId, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIND_MAP = {
+    {LogicalTypeId::FLOAT, unum::usearch::scalar_kind_t::f32_k},
+    {LogicalTypeId::DOUBLE, unum::usearch::scalar_kind_t::f64_k},
+    {LogicalTypeId::TINYINT, unum::usearch::scalar_kind_t::i8_k},
+    {LogicalTypeId::SMALLINT, unum::usearch::scalar_kind_t::i16_k},
+    {LogicalTypeId::INTEGER, unum::usearch::scalar_kind_t::i32_k},
+    {LogicalTypeId::BIGINT, unum::usearch::scalar_kind_t::i64_k},
+    {LogicalTypeId::UTINYINT, unum::usearch::scalar_kind_t::u8_k},
+    {LogicalTypeId::USMALLINT, unum::usearch::scalar_kind_t::u16_k},
+    {LogicalTypeId::UINTEGER, unum::usearch::scalar_kind_t::u32_k},
+    {LogicalTypeId::UBIGINT, unum::usearch::scalar_kind_t::u64_k}};
 
 // Scan State
 struct HNSWIndexScanState : public IndexScanState {
@@ -327,10 +359,9 @@ void HNSWModule::RegisterIndex(DatabaseInstance &db) {
 	IndexType index_type;
 	index_type.name = HNSWIndex::TYPE_NAME;
 
-	index_type.create_instance =
-	    [](CreateIndexInput &input) -> unique_ptr<Index> {
-		auto res = make_uniq<HNSWIndex>(input.name, input.constraint_type, input.column_ids, input.table_io_manager, input.unbound_expressions,
-		                                input.db, input.storage_info);
+	index_type.create_instance = [](CreateIndexInput &input) -> unique_ptr<Index> {
+		auto res = make_uniq<HNSWIndex>(input.name, input.constraint_type, input.column_ids, input.table_io_manager,
+		                                input.unbound_expressions, input.db, input.options, input.storage_info);
 		return std::move(res);
 	};
 

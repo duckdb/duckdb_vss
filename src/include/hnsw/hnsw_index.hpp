@@ -17,7 +17,8 @@ public:
 public:
 	HNSWIndex(const string &name, IndexConstraintType index_constraint_type, const vector<column_t> &column_ids,
 	          TableIOManager &table_io_manager, const vector<unique_ptr<Expression>> &unbound_expressions,
-	          AttachedDatabase &db, const IndexStorageInfo &info = IndexStorageInfo());
+	          AttachedDatabase &db, const case_insensitive_map_t<Value> &options,
+	          const IndexStorageInfo &info = IndexStorageInfo());
 
 	//! The actual usearch index
 	unum::usearch::index_dense_t index;
@@ -35,6 +36,9 @@ public:
 
 	void Construct(DataChunk &input, Vector &row_ids);
 	void PersistToDisk();
+
+	static const case_insensitive_map_t<unum::usearch::metric_kind_t> METRIC_KIND_MAP;
+	static const unordered_map<LogicalTypeId, unum::usearch::scalar_kind_t> SCALAR_KIND_MAP;
 
 public:
 	//! Called when data is appended to the index. The lock obtained from InitializeLock must be held
