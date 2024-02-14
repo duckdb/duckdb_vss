@@ -19,12 +19,13 @@ EXPLAIN SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3
 physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
 
 # Verify results
+# Results are approximate, so lets just check that the first 3 results are close to [1,2,3]
 query I
-SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+SELECT array_distance([1,2,3]::FLOAT[3], vec) < 1.5 FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
 ----
-[1.0, 2.0, 3.0]
-[1.0, 3.0, 3.0]
-[1.0, 2.0, 2.0]
+true
+true
+true
 
 # Checkpoint
 statement ok
@@ -41,8 +42,8 @@ physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
 
 # Verify results again. The index data should still be there
 query I
-SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+SELECT array_distance([1,2,3]::FLOAT[3], vec) < 1.5 FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
 ----
-[1.0, 2.0, 3.0]
-[1.0, 3.0, 3.0]
-[1.0, 2.0, 2.0]
+true
+true
+true

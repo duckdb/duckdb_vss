@@ -4,10 +4,14 @@
 #include "duckdb/common/array.hpp"
 #include "duckdb/execution/index/index_pointer.hpp"
 #include "duckdb/execution/index/fixed_size_allocator.hpp"
+#include "duckdb/common/unordered_map.hpp"
+#include "duckdb/common/case_insensitive_map.hpp"
 
 #include "usearch/duckdb_usearch.hpp"
 
 namespace duckdb {
+
+enum class LogicalTypeId : uint8_t;
 
 class HNSWIndex : public Index {
 public:
