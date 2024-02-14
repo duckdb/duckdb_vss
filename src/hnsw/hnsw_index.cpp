@@ -171,8 +171,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		// This is an old index that needs to be loaded
 		LinkedBlockReader reader(*linked_block_allocator, root_block_ptr);
 		index.load_from_stream([&](void *data, size_t size) {
-			reader.ReadData(static_cast<data_ptr_t>(data), size);
-			return true;
+			return size == reader.ReadData(static_cast<data_ptr_t>(data), size);
 		});
 	} else {
 		index.reserve(0);
@@ -267,7 +266,6 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids) {
 
 	// TODO: Maybe set a local state id?
 	// auto thread_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
-
 	for (idx_t out_idx = 0; out_idx < count; out_idx++) {
 		auto rowid = rowid_data[out_idx];
 		index.add(rowid, vec_child_data + (out_idx * array_size));

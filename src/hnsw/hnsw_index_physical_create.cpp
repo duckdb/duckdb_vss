@@ -75,9 +75,6 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 		throw NotImplementedException("Custom index creation only supported for single-column indexes");
 	}
 
-	// if(key_column.GetType().InternalType() != PhysicalType::INT32) {
-	//	throw NotImplementedException("Custom index creation only supported for INT32 keys");
-	//}
 
 	auto &row_identifiers = chunk.data[1];
 
