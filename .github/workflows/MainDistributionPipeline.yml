@@ -30,3 +30,4 @@ jobs:
       extension_name: vss
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
       deploy_versioned: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
+      exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'

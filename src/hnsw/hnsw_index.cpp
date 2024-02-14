@@ -143,7 +143,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 
 	// Get the scalar kind from the array child type. This parameter should be verified during binding.
 	auto scalar_kind = unum::usearch::scalar_kind_t::f32_k;
-	auto scalar_kind_val = SCALAR_KIND_MAP.find(vector_child_type.id());
+	auto scalar_kind_val = SCALAR_KIND_MAP.find(static_cast<uint8_t>(vector_child_type.id()));
 	if (scalar_kind_val != SCALAR_KIND_MAP.end()) {
 		scalar_kind = scalar_kind_val->second;
 	}
@@ -194,17 +194,17 @@ const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIN
     {"sorensen", unum::usearch::metric_kind_t::sorensen_k},
     {"tanimoto", unum::usearch::metric_kind_t::tanimoto_k}};
 
-const unordered_map<LogicalTypeId, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIND_MAP = {
-    {LogicalTypeId::FLOAT, unum::usearch::scalar_kind_t::f32_k},
-    {LogicalTypeId::DOUBLE, unum::usearch::scalar_kind_t::f64_k},
-    {LogicalTypeId::TINYINT, unum::usearch::scalar_kind_t::i8_k},
-    {LogicalTypeId::SMALLINT, unum::usearch::scalar_kind_t::i16_k},
-    {LogicalTypeId::INTEGER, unum::usearch::scalar_kind_t::i32_k},
-    {LogicalTypeId::BIGINT, unum::usearch::scalar_kind_t::i64_k},
-    {LogicalTypeId::UTINYINT, unum::usearch::scalar_kind_t::u8_k},
-    {LogicalTypeId::USMALLINT, unum::usearch::scalar_kind_t::u16_k},
-    {LogicalTypeId::UINTEGER, unum::usearch::scalar_kind_t::u32_k},
-    {LogicalTypeId::UBIGINT, unum::usearch::scalar_kind_t::u64_k}};
+const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIND_MAP = {
+    {static_cast<uint8_t>(LogicalTypeId::FLOAT), unum::usearch::scalar_kind_t::f32_k},
+    {static_cast<uint8_t>(LogicalTypeId::DOUBLE), unum::usearch::scalar_kind_t::f64_k},
+    {static_cast<uint8_t>(LogicalTypeId::TINYINT), unum::usearch::scalar_kind_t::i8_k},
+    {static_cast<uint8_t>(LogicalTypeId::SMALLINT), unum::usearch::scalar_kind_t::i16_k},
+    {static_cast<uint8_t>(LogicalTypeId::INTEGER), unum::usearch::scalar_kind_t::i32_k},
+    {static_cast<uint8_t>(LogicalTypeId::BIGINT), unum::usearch::scalar_kind_t::i64_k},
+    {static_cast<uint8_t>(LogicalTypeId::UTINYINT), unum::usearch::scalar_kind_t::u8_k},
+    {static_cast<uint8_t>(LogicalTypeId::USMALLINT), unum::usearch::scalar_kind_t::u16_k},
+    {static_cast<uint8_t>(LogicalTypeId::UINTEGER), unum::usearch::scalar_kind_t::u32_k},
+    {static_cast<uint8_t>(LogicalTypeId::UBIGINT), unum::usearch::scalar_kind_t::u64_k}};
 
 // Scan State
 struct HNSWIndexScanState : public IndexScanState {

@@ -60,11 +60,12 @@ public:
 			throw BinderException("HNSW index keys must be of type FLOAT[N]");
 		}
 		auto &child_type = ArrayType::GetChildType(arr_type);
-		auto child_type_val = HNSWIndex::SCALAR_KIND_MAP.find(child_type.id());
+		auto child_type_val = HNSWIndex::SCALAR_KIND_MAP.find(static_cast<uint8_t>(child_type.id()));
 		if (child_type_val == HNSWIndex::SCALAR_KIND_MAP.end()) {
 			vector<string> allowed_types;
 			for (auto &entry : HNSWIndex::SCALAR_KIND_MAP) {
-				allowed_types.push_back(StringUtil::Format("'%s[N]'", LogicalType(entry.first).ToString()));
+				auto id = static_cast<LogicalTypeId>(entry.first);
+				allowed_types.push_back(StringUtil::Format("'%s[N]'", LogicalType(id).ToString()));
 			}
 			throw BinderException("HNSW index key type must be one of: %s", StringUtil::Join(allowed_types, ", "));
 		}

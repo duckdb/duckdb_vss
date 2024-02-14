@@ -11,8 +11,6 @@
 
 namespace duckdb {
 
-enum class LogicalTypeId : uint8_t;
-
 class HNSWIndex : public Index {
 public:
 	// The type name of the HNSWIndex
@@ -42,7 +40,7 @@ public:
 	void PersistToDisk();
 
 	static const case_insensitive_map_t<unum::usearch::metric_kind_t> METRIC_KIND_MAP;
-	static const unordered_map<LogicalTypeId, unum::usearch::scalar_kind_t> SCALAR_KIND_MAP;
+	static const unordered_map<uint8_t, unum::usearch::scalar_kind_t> SCALAR_KIND_MAP;
 
 public:
 	//! Called when data is appended to the index. The lock obtained from InitializeLock must be held
