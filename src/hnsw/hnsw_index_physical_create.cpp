@@ -75,7 +75,6 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 		throw NotImplementedException("Custom index creation only supported for single-column indexes");
 	}
 
-
 	auto &row_identifiers = chunk.data[1];
 
 	// Construct the index

@@ -163,23 +163,8 @@ public:
 		get.bind_data = std::move(bind_data);
 		get.function = HNSWIndexScanFunction::GetFunction();
 
-		// TODO: This only works as long as we only have one order expression
-		// Remove the order from the projection
-		projection.expressions.erase(projection.expressions.begin() + static_cast<ptrdiff_t>(projection_index));
-
 		// Remove the TopN operator
 		plan = std::move(top_n.children[0]);
-
-		// Remove the distance expression from the order by operator
-		// TODO: We can potentially remove the order by operator completely,
-		// if the distance expression is the only expression in the order by operator
-		// and we push down the limit and offset into the custom index scan function
-		// top_n.orders.erase(top_n.orders.begin());
-
-		// If the order by operator is now empty, remove it completely
-		// if(top_n.orders.empty()) {
-		//	plan = std::move(top_n.children[0]);
-		//}
 	}
 
 	static void Optimize(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {

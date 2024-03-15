@@ -1,0 +1,23 @@
+require vss
+
+statement ok
+CREATE TABLE t1 (vec FLOAT[3]);
+
+statement ok
+INSERT INTO t1 SELECT array_value(a,b,c) FROM range(1,10) ra(a), range(1,10) rb(b), range(1,10) rc(c);
+
+statement ok
+CREATE INDEX my_idx ON t1 USING HNSW (vec);
+
+# Make sure we get the index scan plan
+query II
+EXPLAIN SELECT array_distance(vec, [1,2,3]::FLOAT[3]) as x FROM t1 ORDER BY x LIMIT 3;
+----
+physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
+
+query I
+SELECT array_distance(vec, [1,2,3]::FLOAT[3]) as x FROM t1 ORDER BY x LIMIT 3;
+----
+0.0
+1.0
+1.0
