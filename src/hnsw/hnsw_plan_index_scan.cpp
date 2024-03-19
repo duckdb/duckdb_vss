@@ -166,8 +166,12 @@ public:
 		}
 
 		// Replace the scan with our custom index scan function
-		get.bind_data = std::move(bind_data);
+
 		get.function = HNSWIndexScanFunction::GetFunction();
+		auto cardinality = get.function.cardinality(context, bind_data.get());
+		get.has_estimated_cardinality = cardinality->has_estimated_cardinality;
+		get.estimated_cardinality = cardinality->estimated_cardinality;
+		get.bind_data = std::move(bind_data);
 
 		// Remove the TopN operator
 		plan = std::move(top_n.children[0]);

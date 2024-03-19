@@ -1,0 +1,41 @@
+require vss
+
+# Step 0: Open a database
+load __TEST_DIR__/temp_index_hnsw_crud_storage.db
+
+statement ok
+CREATE TABLE t1 (vec FLOAT[3]);
+
+statement ok
+INSERT INTO t1 VALUES (array[1.0, 2.0, 3.0]);
+
+statement ok
+CREATE INDEX my_idx ON t1 USING HNSW (vec);
+
+statement ok
+CHECKPOINT;
+
+statement ok
+INSERT INTO t1 VALUES (array[5.0, 5.0, 5.0]);
+
+statement ok
+DELETE FROM t1 WHERE vec = array[1.0, 2.0, 3.0];
+
+query I
+SELECT * FROM t1;
+----
+[5.0, 5.0, 5.0]
+
+# Restart the database
+restart
+
+# Step 2: Check the index
+query II
+EXPLAIN SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+----
+physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
+
+query I
+SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
+----
+[5.0, 5.0, 5.0]

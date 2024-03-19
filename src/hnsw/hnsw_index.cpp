@@ -285,28 +285,38 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	auto rowid_data = FlatVector::GetData<row_t>(row_ids);
 	for (idx_t out_idx = 0; out_idx < count; out_idx++) {
 		auto rowid = rowid_data[out_idx];
-		index.add(rowid, vec_child_data + (out_idx * array_size), thread_idx);
+		auto result = index.add(rowid, vec_child_data + (out_idx * array_size), thread_idx);
+		if(!result) {
+			throw InternalException("Failed to add to the HNSW index: %s", result.error.what());
+		}
 	}
 }
 
-void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &row_ids_vector) {
-	throw NotImplementedException("Cannot update a HNSW index after it has been created");
+void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
+	auto count = input.size();
+	rowid_vec.Flatten(count);
+	auto row_id_data = FlatVector::GetData<row_t>(rowid_vec);
+	for(idx_t i = 0; i < input.size(); i++) {
+		auto result = index.remove(row_id_data[i]);
+	}
 }
 
 ErrorData HNSWIndex::Insert(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
-	throw NotImplementedException("Cannot update a HNSW index after it has been created");
+	Construct(input, rowid_vec, unum::usearch::index_dense_t::any_thread());
+	return ErrorData{};
 }
 
-ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &entries, Vector &row_identifiers) {
-	throw NotImplementedException("Cannot update a HNSW index after it has been created");
+ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &entries, Vector &rowid_vec) {
+	Construct(entries, rowid_vec, unum::usearch::index_dense_t::any_thread());
+	return ErrorData{};
 }
 
 void HNSWIndex::VerifyAppend(DataChunk &chunk) {
-	throw NotImplementedException("HNSWIndex::VerifyAppend() not implemented");
+	// There is nothing to verify here as we dont support constraints anyway
 }
 
 void HNSWIndex::VerifyAppend(DataChunk &chunk, ConflictManager &conflict_manager) {
-	throw NotImplementedException("HNSWIndex::VerifyAppend() not implemented");
+	// There is nothing to verify here as we dont support constraints anyway
 }
 
 void HNSWIndex::PersistToDisk() {
@@ -325,6 +335,8 @@ void HNSWIndex::PersistToDisk() {
 }
 
 IndexStorageInfo HNSWIndex::GetStorageInfo(const bool get_buffers) {
+
+	PersistToDisk();
 
 	IndexStorageInfo info;
 	info.name = name;
@@ -355,7 +367,10 @@ bool HNSWIndex::MergeIndexes(IndexLock &state, Index &other_index) {
 
 void HNSWIndex::Vacuum(IndexLock &state) {
 	// Re-compact the index
-	index.compact();
+	auto result = index.compact();
+	if(!result) {
+		throw InternalException("Failed to compact the HNSW index: %s", result.error.what());
+	}
 }
 
 void HNSWIndex::CheckConstraintsForChunk(DataChunk &input, ConflictManager &conflict_manager) {
