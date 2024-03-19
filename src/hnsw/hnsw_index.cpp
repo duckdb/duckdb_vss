@@ -267,17 +267,6 @@ void HNSWIndex::CommitDrop(IndexLock &index_lock) {
 	root_block_ptr.Clear();
 }
 
-inline idx_t NextPowerOfTwo(idx_t v) {
-	v--;
-	v |= v >> 1;
-	v |= v >> 2;
-	v |= v >> 4;
-	v |= v >> 8;
-	v |= v >> 16;
-	v |= v >> 32;
-	v++;
-	return v;
-}
 
 void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	D_ASSERT(row_ids.GetType().InternalType() == ROW_TYPE);
@@ -293,9 +282,10 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	auto vec_child_data = FlatVector::GetData<float>(vec_child_vec);
 	auto rowid_data = FlatVector::GetData<row_t>(row_ids);
 
-	// lock_guard<mutex> lock(hnsw_index_mutex);
-	// TODO: Do we need to track this atomically globally?
-	// Better strategy: Create multiple small indexes and merge!
+	// Even if .add is threadsafe, it is not threadsafe in combination with .reserve
+	// E.g. we need to have enough capacity up front before we can parallelize. If we reserve while adding it will crash.
+	// So we need to lock here.
+	// An idea: Buffer everything into a ColumnDataCollection and then add it all at in parallel in the end once we have reserved enough space.
 	static mutex hnsw_index_mutex;
 	lock_guard<mutex> lock(hnsw_index_mutex);
 
