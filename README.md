@@ -1,13 +1,13 @@
 # DuckDB-VSS
 
-Vector Similarity Search Extension (based on usearch)
+Vector Similarity Search for DuckDB
 
 This is an experimental extension for DuckDB that adds indexing support to accelerate Vector Similarity Search using DuckDB's new fixed-size `ARRAY` type added in version v0.10.0. 
 This extension is based on the [usearch](https://github.com/unum-cloud/usearch) library and serves as a proof of concept for providing a custom index type, in this case a HNSW index, from within an extension and exposing it to DuckDB.
 
 ## Usage
 
-To create a new HNSW index on a table, use the `CREATE INDEX` statement with the `USING HNSW` clause. For example:
+To create a new HNSW index on a table with an `ARRAY` column, use the `CREATE INDEX` statement with the `USING HNSW` clause. For example:
 ```sql
 CREATE TABLE my_vector_table (vec FLOAT[3]);
 INSERT INTO my_vector_table SELECT array_value(a,b,c) FROM range(1,10) ra(a), range(1,10) rb(b), range(1,10) rc(c);

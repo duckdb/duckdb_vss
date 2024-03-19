@@ -267,6 +267,18 @@ void HNSWIndex::CommitDrop(IndexLock &index_lock) {
 	root_block_ptr.Clear();
 }
 
+inline idx_t NextPowerOfTwo(idx_t v) {
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v |= v >> 32;
+	v++;
+	return v;
+}
+
 void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	D_ASSERT(row_ids.GetType().InternalType() == ROW_TYPE);
 	D_ASSERT(logical_types[0] == input.data[0].GetType());
@@ -274,15 +286,23 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	auto count = input.size();
 	input.Flatten();
 
-	// TODO: Do we need to track this atomically globally?
-	index.reserve(index.capacity() + count);
-
 	auto &vec_vec = input.data[0];
 	auto &vec_child_vec = ArrayVector::GetEntry(vec_vec);
 	auto array_size = ArrayType::GetSize(vec_vec.GetType());
 
 	auto vec_child_data = FlatVector::GetData<float>(vec_child_vec);
 	auto rowid_data = FlatVector::GetData<row_t>(row_ids);
+
+	// lock_guard<mutex> lock(hnsw_index_mutex);
+	// TODO: Do we need to track this atomically globally?
+	// Better strategy: Create multiple small indexes and merge!
+	static mutex hnsw_index_mutex;
+	lock_guard<mutex> lock(hnsw_index_mutex);
+
+	if(!index.reserve(NextPowerOfTwo(index.size() + count))) {
+		throw InternalException("Failed to reserve space in the HNSW index");
+	}
+
 	for (idx_t out_idx = 0; out_idx < count; out_idx++) {
 		auto rowid = rowid_data[out_idx];
 		auto result = index.add(rowid, vec_child_data + (out_idx * array_size), thread_idx);

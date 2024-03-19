@@ -153,8 +153,7 @@ enum class prefetching_kind_t {
 	io_uring_k,
 };
 
-template <typename scalar_at>
-scalar_kind_t scalar_kind() noexcept {
+template <typename scalar_at> scalar_kind_t scalar_kind() noexcept {
 	if (std::is_same<scalar_at, b1x8_t>())
 		return scalar_kind_t::b1x8_k;
 	if (std::is_same<scalar_at, uint40_t>())
@@ -188,109 +187,72 @@ scalar_kind_t scalar_kind() noexcept {
 	return scalar_kind_t::unknown_k;
 }
 
-template <typename at>
-at angle_to_radians(at angle) noexcept {
-	return angle * at(3.14159265358979323846) / at(180);
-}
+template <typename at> at angle_to_radians(at angle) noexcept { return angle * at(3.14159265358979323846) / at(180); }
 
-template <typename at>
-at square(at value) noexcept {
-	return value * value;
-}
+template <typename at> at square(at value) noexcept { return value * value; }
 
-template <typename at, typename compare_at>
-inline at clamp(at v, at lo, at hi, compare_at comp) noexcept {
+template <typename at, typename compare_at> inline at clamp(at v, at lo, at hi, compare_at comp) noexcept {
 	return comp(v, lo) ? lo : comp(hi, v) ? hi : v;
 }
-template <typename at>
-inline at clamp(at v, at lo, at hi) noexcept {
-	return usearch::clamp(v, lo, hi, std::less<at> {});
+template <typename at> inline at clamp(at v, at lo, at hi) noexcept {
+	return usearch::clamp(v, lo, hi, std::less<at>{});
 }
 
-inline bool str_equals(char const *begin, std::size_t len, char const *other_begin) noexcept {
+inline bool str_equals(char const* begin, std::size_t len, char const* other_begin) noexcept {
 	std::size_t other_len = std::strlen(other_begin);
 	return len == other_len && std::strncmp(begin, other_begin, len) == 0;
 }
 
 inline std::size_t bits_per_scalar(scalar_kind_t scalar_kind) noexcept {
 	switch (scalar_kind) {
-	case scalar_kind_t::f64_k:
-		return 64;
-	case scalar_kind_t::f32_k:
-		return 32;
-	case scalar_kind_t::f16_k:
-		return 16;
-	case scalar_kind_t::i8_k:
-		return 8;
-	case scalar_kind_t::b1x8_k:
-		return 1;
-	default:
-		return 0;
+	case scalar_kind_t::f64_k: return 64;
+	case scalar_kind_t::f32_k: return 32;
+	case scalar_kind_t::f16_k: return 16;
+	case scalar_kind_t::i8_k: return 8;
+	case scalar_kind_t::b1x8_k: return 1;
+	default: return 0;
 	}
 }
 
 inline std::size_t bits_per_scalar_word(scalar_kind_t scalar_kind) noexcept {
 	switch (scalar_kind) {
-	case scalar_kind_t::f64_k:
-		return 64;
-	case scalar_kind_t::f32_k:
-		return 32;
-	case scalar_kind_t::f16_k:
-		return 16;
-	case scalar_kind_t::i8_k:
-		return 8;
-	case scalar_kind_t::b1x8_k:
-		return 8;
-	default:
-		return 0;
+	case scalar_kind_t::f64_k: return 64;
+	case scalar_kind_t::f32_k: return 32;
+	case scalar_kind_t::f16_k: return 16;
+	case scalar_kind_t::i8_k: return 8;
+	case scalar_kind_t::b1x8_k: return 8;
+	default: return 0;
 	}
 }
 
-inline char const *scalar_kind_name(scalar_kind_t scalar_kind) noexcept {
+inline char const* scalar_kind_name(scalar_kind_t scalar_kind) noexcept {
 	switch (scalar_kind) {
-	case scalar_kind_t::f32_k:
-		return "f32";
-	case scalar_kind_t::f16_k:
-		return "f16";
-	case scalar_kind_t::f64_k:
-		return "f64";
-	case scalar_kind_t::i8_k:
-		return "i8";
-	case scalar_kind_t::b1x8_k:
-		return "b1x8";
-	default:
-		return "";
+	case scalar_kind_t::f32_k: return "f32";
+	case scalar_kind_t::f16_k: return "f16";
+	case scalar_kind_t::f64_k: return "f64";
+	case scalar_kind_t::i8_k: return "i8";
+	case scalar_kind_t::b1x8_k: return "b1x8";
+	default: return "";
 	}
 }
 
-inline char const *metric_kind_name(metric_kind_t metric) noexcept {
+inline char const* metric_kind_name(metric_kind_t metric) noexcept {
 	switch (metric) {
-	case metric_kind_t::unknown_k:
-		return "unknown";
-	case metric_kind_t::ip_k:
-		return "ip";
-	case metric_kind_t::cos_k:
-		return "cos";
-	case metric_kind_t::l2sq_k:
-		return "l2sq";
-	case metric_kind_t::pearson_k:
-		return "pearson";
-	case metric_kind_t::haversine_k:
-		return "haversine";
-	case metric_kind_t::divergence_k:
-		return "divergence";
-	case metric_kind_t::jaccard_k:
-		return "jaccard";
-	case metric_kind_t::hamming_k:
-		return "hamming";
-	case metric_kind_t::tanimoto_k:
-		return "tanimoto";
-	case metric_kind_t::sorensen_k:
-		return "sorensen";
+	case metric_kind_t::unknown_k: return "unknown";
+	case metric_kind_t::ip_k: return "ip";
+	case metric_kind_t::cos_k: return "cos";
+	case metric_kind_t::l2sq_k: return "l2sq";
+	case metric_kind_t::pearson_k: return "pearson";
+	case metric_kind_t::haversine_k: return "haversine";
+	case metric_kind_t::divergence_k: return "divergence";
+	case metric_kind_t::jaccard_k: return "jaccard";
+	case metric_kind_t::hamming_k: return "hamming";
+	case metric_kind_t::tanimoto_k: return "tanimoto";
+	case metric_kind_t::sorensen_k: return "sorensen";
 	}
 	return "";
 }
-inline expected_gt<scalar_kind_t> scalar_kind_from_name(char const *name, std::size_t len) {
+inline expected_gt<scalar_kind_t> scalar_kind_from_name(char const* name, std::size_t len) {
 	expected_gt<scalar_kind_t> parsed;
 	if (str_equals(name, len, "f32"))
 		parsed.result = scalar_kind_t::f32_k;
@@ -305,11 +267,11 @@ inline expected_gt<scalar_kind_t> scalar_kind_from_name(char const *name, std::s
 	return parsed;
 }
 
-inline expected_gt<scalar_kind_t> scalar_kind_from_name(char const *name) {
+inline expected_gt<scalar_kind_t> scalar_kind_from_name(char const* name) {
 	return scalar_kind_from_name(name, std::strlen(name));
 }
 
-inline expected_gt<metric_kind_t> metric_from_name(char const *name, std::size_t len) {
+inline expected_gt<metric_kind_t> metric_from_name(char const* name, std::size_t len) {
 	expected_gt<metric_kind_t> parsed;
 	if (str_equals(name, len, "l2sq") || str_equals(name, len, "euclidean_sq")) {
 		parsed.result = metric_kind_t::l2sq_k;
@@ -335,7 +297,7 @@ inline expected_gt<metric_kind_t> metric_from_name(char const *name, std::size_t
 	return parsed;
 }
 
-inline expected_gt<metric_kind_t> metric_from_name(char const *name) {
+inline expected_gt<metric_kind_t> metric_from_name(char const* name) {
 	return metric_from_name(name, std::strlen(name));
 }
 
@@ -366,84 +328,52 @@ inline std::uint16_t f32_to_f16(float f32) noexcept {
  *          agnostic in-software implementation.
  */
 class f16_bits_t {
-	std::uint16_t uint16_ {};
+	std::uint16_t uint16_{};
 
 public:
-	inline f16_bits_t() noexcept : uint16_(0) {
-	}
-	inline f16_bits_t(f16_bits_t &&) = default;
-	inline f16_bits_t &operator=(f16_bits_t &&) = default;
-	inline f16_bits_t(f16_bits_t const &) = default;
-	inline f16_bits_t &operator=(f16_bits_t const &) = default;
+	inline f16_bits_t() noexcept : uint16_(0) {}
+	inline f16_bits_t(f16_bits_t&&) = default;
+	inline f16_bits_t& operator=(f16_bits_t&&) = default;
+	inline f16_bits_t(f16_bits_t const&) = default;
+	inline f16_bits_t& operator=(f16_bits_t const&) = default;
 
-	inline operator float() const noexcept {
-		return f16_to_f32(uint16_);
-	}
-	inline explicit operator bool() const noexcept {
-		return f16_to_f32(uint16_) > 0.5f;
-	}
+	inline operator float() const noexcept { return f16_to_f32(uint16_); }
+	inline explicit operator bool() const noexcept { return f16_to_f32(uint16_) > 0.5f; }
 
 	inline f16_bits_t(i8_converted_t) noexcept;
-	inline f16_bits_t(bool v) noexcept : uint16_(f32_to_f16(v)) {
-	}
-	inline f16_bits_t(float v) noexcept : uint16_(f32_to_f16(v)) {
-	}
-	inline f16_bits_t(double v) noexcept : uint16_(f32_to_f16(v)) {
-	}
+	inline f16_bits_t(bool v) noexcept : uint16_(f32_to_f16(v)) {}
+	inline f16_bits_t(float v) noexcept : uint16_(f32_to_f16(v)) {}
+	inline f16_bits_t(double v) noexcept : uint16_(f32_to_f16(v)) {}
 
-	inline f16_bits_t operator+(f16_bits_t other) const noexcept {
-		return {float(*this) + float(other)};
-	}
-	inline f16_bits_t operator-(f16_bits_t other) const noexcept {
-		return {float(*this) - float(other)};
-	}
-	inline f16_bits_t operator*(f16_bits_t other) const noexcept {
-		return {float(*this) * float(other)};
-	}
-	inline f16_bits_t operator/(f16_bits_t other) const noexcept {
-		return {float(*this) / float(other)};
-	}
-	inline f16_bits_t operator+(float other) const noexcept {
-		return {float(*this) + other};
-	}
-	inline f16_bits_t operator-(float other) const noexcept {
-		return {float(*this) - other};
-	}
-	inline f16_bits_t operator*(float other) const noexcept {
-		return {float(*this) * other};
-	}
-	inline f16_bits_t operator/(float other) const noexcept {
-		return {float(*this) / other};
-	}
-	inline f16_bits_t operator+(double other) const noexcept {
-		return {float(*this) + other};
-	}
-	inline f16_bits_t operator-(double other) const noexcept {
-		return {float(*this) - other};
-	}
-	inline f16_bits_t operator*(double other) const noexcept {
-		return {float(*this) * other};
-	}
-	inline f16_bits_t operator/(double other) const noexcept {
-		return {float(*this) / other};
-	}
+	inline f16_bits_t operator+(f16_bits_t other) const noexcept { return {float(*this) + float(other)}; }
+	inline f16_bits_t operator-(f16_bits_t other) const noexcept { return {float(*this) - float(other)}; }
+	inline f16_bits_t operator*(f16_bits_t other) const noexcept { return {float(*this) * float(other)}; }
+	inline f16_bits_t operator/(f16_bits_t other) const noexcept { return {float(*this) / float(other)}; }
+	inline f16_bits_t operator+(float other) const noexcept { return {float(*this) + other}; }
+	inline f16_bits_t operator-(float other) const noexcept { return {float(*this) - other}; }
+	inline f16_bits_t operator*(float other) const noexcept { return {float(*this) * other}; }
+	inline f16_bits_t operator/(float other) const noexcept { return {float(*this) / other}; }
+	inline f16_bits_t operator+(double other) const noexcept { return {float(*this) + other}; }
+	inline f16_bits_t operator-(double other) const noexcept { return {float(*this) - other}; }
+	inline f16_bits_t operator*(double other) const noexcept { return {float(*this) * other}; }
+	inline f16_bits_t operator/(double other) const noexcept { return {float(*this) / other}; }
 
-	inline f16_bits_t &operator+=(float v) noexcept {
+	inline f16_bits_t& operator+=(float v) noexcept {
 		uint16_ = f32_to_f16(v + f16_to_f32(uint16_));
 		return *this;
 	}
 
-	inline f16_bits_t &operator-=(float v) noexcept {
+	inline f16_bits_t& operator-=(float v) noexcept {
 		uint16_ = f32_to_f16(v - f16_to_f32(uint16_));
 		return *this;
 	}
 
-	inline f16_bits_t &operator*=(float v) noexcept {
+	inline f16_bits_t& operator*=(float v) noexcept {
 		uint16_ = f32_to_f16(v * f16_to_f32(uint16_));
 		return *this;
 	}
 
-	inline f16_bits_t &operator/=(float v) noexcept {
+	inline f16_bits_t& operator/=(float v) noexcept {
 		uint16_ = f32_to_f16(v / f16_to_f32(uint16_));
 		return *this;
 	}
@@ -454,17 +384,15 @@ public:
  *          Isn't efficient for small batches, as it recreates the threads on every call.
  */
 class executor_stl_t {
-	std::size_t threads_count_ {};
+	std::size_t threads_count_{};
 
 	struct jthread_t {
 		std::thread native_;
 
 		jthread_t() = default;
-		jthread_t(jthread_t &&) = default;
-		jthread_t(jthread_t const &) = delete;
-		template <typename callable_at>
-		jthread_t(callable_at &&func) : native_([=]() { func(); }) {
-		}
+		jthread_t(jthread_t&&) = default;
+		jthread_t(jthread_t const&) = delete;
+		template <typename callable_at> jthread_t(callable_at&& func) : native_([=]() { func(); }) {}
 
 		~jthread_t() {
 			if (native_.joinable())
@@ -474,27 +402,24 @@ class executor_stl_t {
 
 public:
 	/**
-	 *  @param threads_count The number of threads to be used for parallel execution.
+     *  @param threads_count The number of threads to be used for parallel execution.
 	 */
 	executor_stl_t(std::size_t threads_count = 0) noexcept
-	    : threads_count_(threads_count ? threads_count : std::thread::hardware_concurrency()) {
-	}
+	    : threads_count_(threads_count ? threads_count : std::thread::hardware_concurrency()) {}
 
 	/**
-	 *  @return Maximum number of threads available to the executor.
+     *  @return Maximum number of threads available to the executor.
 	 */
-	std::size_t size() const noexcept {
-		return threads_count_;
-	}
+	std::size_t size() const noexcept { return threads_count_; }
 
 	/**
-	 *  @brief Executes a fixed number of tasks using the specified thread-aware function.
-	 *  @param tasks                 The total number of tasks to be executed.
-	 *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
-	 *  @throws If an exception occurs during execution of the thread-aware function.
+     *  @brief Executes a fixed number of tasks using the specified thread-aware function.
+     *  @param tasks                 The total number of tasks to be executed.
+     *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
+     *  @throws If an exception occurs during execution of the thread-aware function.
 	 */
 	template <typename thread_aware_function_at>
-	void fixed(std::size_t tasks, thread_aware_function_at &&thread_aware_function) noexcept(false) {
+	void fixed(std::size_t tasks, thread_aware_function_at&& thread_aware_function) noexcept(false) {
 		std::vector<jthread_t> threads_pool;
 		std::size_t tasks_per_thread = tasks;
 		std::size_t threads_count = (std::min)(threads_count_, tasks);
@@ -513,17 +438,17 @@ public:
 	}
 
 	/**
-	 *  @brief Executes limited number of tasks using the specified thread-aware function.
-	 *  @param tasks                 The upper bound on the number of tasks.
-	 *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
-	 *  @throws If an exception occurs during execution of the thread-aware function.
+     *  @brief Executes limited number of tasks using the specified thread-aware function.
+     *  @param tasks                 The upper bound on the number of tasks.
+     *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
+     *  @throws If an exception occurs during execution of the thread-aware function.
 	 */
 	template <typename thread_aware_function_at>
-	void dynamic(std::size_t tasks, thread_aware_function_at &&thread_aware_function) noexcept(false) {
+	void dynamic(std::size_t tasks, thread_aware_function_at&& thread_aware_function) noexcept(false) {
 		std::vector<jthread_t> threads_pool;
 		std::size_t tasks_per_thread = tasks;
 		std::size_t threads_count = (std::min)(threads_count_, tasks);
-		std::atomic_bool stop {false};
+		std::atomic_bool stop{false};
 		if (threads_count > 1) {
 			tasks_per_thread = (tasks / threads_count) + ((tasks % threads_count) != 0);
 			for (std::size_t thread_idx = 1; thread_idx < threads_count; ++thread_idx) {
@@ -544,12 +469,12 @@ public:
 	}
 
 	/**
-	 *  @brief Saturates every available thread with the given workload, until they finish.
-	 *  @param thread_aware_function The thread-aware function to be called for each thread index.
-	 *  @throws If an exception occurs during execution of the thread-aware function.
+     *  @brief Saturates every available thread with the given workload, until they finish.
+     *  @param thread_aware_function The thread-aware function to be called for each thread index.
+     *  @throws If an exception occurs during execution of the thread-aware function.
 	 */
 	template <typename thread_aware_function_at>
-	void parallel(thread_aware_function_at &&thread_aware_function) noexcept(false) {
+	void parallel(thread_aware_function_at&& thread_aware_function) noexcept(false) {
 		if (threads_count_ == 1)
 			return thread_aware_function(0);
 		std::vector<jthread_t> threads_pool;
@@ -568,27 +493,25 @@ public:
 class executor_openmp_t {
 public:
 	/**
-	 *  @param threads_count The number of threads to be used for parallel execution.
+     *  @param threads_count The number of threads to be used for parallel execution.
 	 */
 	executor_openmp_t(std::size_t threads_count = 0) noexcept {
 		omp_set_num_threads(threads_count ? threads_count : std::thread::hardware_concurrency());
 	}
 
 	/**
-	 *  @return Maximum number of threads available to the executor.
+     *  @return Maximum number of threads available to the executor.
 	 */
-	std::size_t size() const noexcept {
-		return omp_get_num_threads();
-	}
+	std::size_t size() const noexcept { return omp_get_num_threads(); }
 
 	/**
-	 *  @brief Executes tasks in bulk using the specified thread-aware function.
-	 *  @param tasks                 The total number of tasks to be executed.
-	 *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
-	 *  @throws If an exception occurs during execution of the thread-aware function.
+     *  @brief Executes tasks in bulk using the specified thread-aware function.
+     *  @param tasks                 The total number of tasks to be executed.
+     *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
+     *  @throws If an exception occurs during execution of the thread-aware function.
 	 */
 	template <typename thread_aware_function_at>
-	void fixed(std::size_t tasks, thread_aware_function_at &&thread_aware_function) noexcept(false) {
+	void fixed(std::size_t tasks, thread_aware_function_at&& thread_aware_function) noexcept(false) {
 #pragma omp parallel for schedule(dynamic, 1)
 		for (std::size_t i = 0; i != tasks; ++i) {
 			thread_aware_function(omp_get_thread_num(), i);
@@ -596,13 +519,13 @@ public:
 	}
 
 	/**
-	 *  @brief Executes tasks in bulk using the specified thread-aware function.
-	 *  @param tasks                 The total number of tasks to be executed.
-	 *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
-	 *  @throws If an exception occurs during execution of the thread-aware function.
+     *  @brief Executes tasks in bulk using the specified thread-aware function.
+     *  @param tasks                 The total number of tasks to be executed.
+     *  @param thread_aware_function The thread-aware function to be called for each thread index and task index.
+     *  @throws If an exception occurs during execution of the thread-aware function.
 	 */
 	template <typename thread_aware_function_at>
-	void dynamic(std::size_t tasks, thread_aware_function_at &&thread_aware_function) noexcept(false) {
+	void dynamic(std::size_t tasks, thread_aware_function_at&& thread_aware_function) noexcept(false) {
 		// OpenMP cancellation points are not yet available on most platforms, and require
 		// the `OMP_CANCELLATION` environment variable to be set.
 		// http://jakascorner.com/blog/2016/08/omp-cancel.html
@@ -615,7 +538,7 @@ public:
 		//         }
 		//     }
 		// }
-		std::atomic_bool stop {false};
+		std::atomic_bool stop{false};
 #pragma omp parallel for schedule(dynamic, 1) shared(stop)
 		for (std::size_t i = 0; i != tasks; ++i) {
 			if (!stop.load(std::memory_order_relaxed) && !thread_aware_function(omp_get_thread_num(), i))
@@ -624,12 +547,12 @@ public:
 	}
 
 	/**
-	 *  @brief Saturates every available thread with the given workload, until they finish.
-	 *  @param thread_aware_function The thread-aware function to be called for each thread index.
-	 *  @throws If an exception occurs during execution of the thread-aware function.
+     *  @brief Saturates every available thread with the given workload, until they finish.
+     *  @param thread_aware_function The thread-aware function to be called for each thread index.
+     *  @throws If an exception occurs during execution of the thread-aware function.
 	 */
 	template <typename thread_aware_function_at>
-	void parallel(thread_aware_function_at &&thread_aware_function) noexcept(false) {
+	void parallel(thread_aware_function_at&& thread_aware_function) noexcept(false) {
 #pragma omp parallel
 		{ thread_aware_function(omp_get_thread_num()); }
 	}
@@ -651,16 +574,13 @@ class aligned_allocator_gt {
 public:
 	using value_type = element_at;
 	using size_type = std::size_t;
-	using pointer = element_at *;
-	using const_pointer = element_at const *;
-	template <typename other_element_at>
-	struct rebind {
+	using pointer = element_at*;
+	using const_pointer = element_at const*;
+	template <typename other_element_at> struct rebind {
 		using other = aligned_allocator_gt<other_element_at>;
 	};
 
-	constexpr std::size_t alignment() const {
-		return alignment_ak;
-	}
+	constexpr std::size_t alignment() const { return alignment_ak; }
 
 	pointer allocate(size_type length) const {
 		std::size_t length_bytes = alignment_ak * divide_round_up<alignment_ak>(length * sizeof(value_type));
@@ -688,25 +608,23 @@ using aligned_allocator_t = aligned_allocator_gt<>;
 
 class page_allocator_t {
 public:
-	static constexpr std::size_t page_size() {
-		return 4096;
-	}
+	static constexpr std::size_t page_size() { return 4096; }
 
 	/**
-	 *  @brief Allocates an @b uninitialized block of memory of the specified size.
-	 *  @param count_bytes The number of bytes to allocate.
-	 *  @return A pointer to the allocated memory block, or `nullptr` if allocation fails.
+     *  @brief Allocates an @b uninitialized block of memory of the specified size.
+     *  @param count_bytes The number of bytes to allocate.
+     *  @return A pointer to the allocated memory block, or `nullptr` if allocation fails.
 	 */
-	byte_t *allocate(std::size_t count_bytes) const noexcept {
+	byte_t* allocate(std::size_t count_bytes) const noexcept {
 		count_bytes = divide_round_up(count_bytes, page_size()) * page_size();
 #if defined(USEARCH_DEFINED_WINDOWS)
-		return (byte_t *)(::VirtualAlloc(NULL, count_bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+		return (byte_t*)(::VirtualAlloc(NULL, count_bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
 #else
-		return (byte_t *)mmap(NULL, count_bytes, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+		return (byte_t*)mmap(NULL, count_bytes, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 #endif
 	}
 
-	void deallocate(byte_t *page_pointer, std::size_t count_bytes) const noexcept {
+	void deallocate(byte_t* page_pointer, std::size_t count_bytes) const noexcept {
 #if defined(USEARCH_DEFINED_WINDOWS)
 		::VirtualFree(page_pointer, 0, MEM_RELEASE);
 #else
@@ -723,22 +641,17 @@ public:
  *  Using this memory allocator won't affect your overall speed much, as that is not the bottleneck.
  *  However, it can drastically improve memory usage especially for huge indexes of small vectors.
  */
-template <std::size_t alignment_ak = 1>
-class memory_mapping_allocator_gt {
+template <std::size_t alignment_ak = 1> class memory_mapping_allocator_gt {
 
-	static constexpr std::size_t min_capacity() {
-		return 1024 * 1024 * 4;
-	}
-	static constexpr std::size_t capacity_multiplier() {
-		return 2;
-	}
+	static constexpr std::size_t min_capacity() { return 1024 * 1024 * 4; }
+	static constexpr std::size_t capacity_multiplier() { return 2; }
 	static constexpr std::size_t head_size() {
 		/// Pointer to the the previous arena and the size of the current one.
-		return divide_round_up<alignment_ak>(sizeof(byte_t *) + sizeof(std::size_t)) * alignment_ak;
+		return divide_round_up<alignment_ak>(sizeof(byte_t*) + sizeof(std::size_t)) * alignment_ak;
 	}
 
 	std::mutex mutex_;
-	byte_t *last_arena_ = nullptr;
+	byte_t* last_arena_ = nullptr;
 	std::size_t last_usage_ = head_size();
 	std::size_t last_capacity_ = min_capacity();
 	std::size_t wasted_space_ = 0;
@@ -746,16 +659,15 @@ class memory_mapping_allocator_gt {
 public:
 	using value_type = byte_t;
 	using size_type = std::size_t;
-	using pointer = byte_t *;
-	using const_pointer = byte_t const *;
+	using pointer = byte_t*;
+	using const_pointer = byte_t const*;
 
 	memory_mapping_allocator_gt() = default;
-	memory_mapping_allocator_gt(memory_mapping_allocator_gt &&other) noexcept
+	memory_mapping_allocator_gt(memory_mapping_allocator_gt&& other) noexcept
 	    : last_arena_(exchange(other.last_arena_, nullptr)), last_usage_(exchange(other.last_usage_, 0)),
-	      last_capacity_(exchange(other.last_capacity_, 0)), wasted_space_(exchange(other.wasted_space_, 0)) {
-	}
+	      last_capacity_(exchange(other.last_capacity_, 0)), wasted_space_(exchange(other.wasted_space_, 0)) {}
 
-	memory_mapping_allocator_gt &operator=(memory_mapping_allocator_gt &&other) noexcept {
+	memory_mapping_allocator_gt& operator=(memory_mapping_allocator_gt&& other) noexcept {
 		std::swap(last_arena_, other.last_arena_);
 		std::swap(last_usage_, other.last_usage_);
 		std::swap(last_capacity_, other.last_capacity_);
@@ -763,21 +675,19 @@ public:
 		return *this;
 	}
 
-	~memory_mapping_allocator_gt() noexcept {
-		reset();
-	}
+	~memory_mapping_allocator_gt() noexcept { reset(); }
 
 	/**
-	 *  @brief Discards all previously allocated memory buffers.
+     *  @brief Discards all previously allocated memory buffers.
 	 */
 	void reset() noexcept {
-		byte_t *last_arena = last_arena_;
+		byte_t* last_arena = last_arena_;
 		while (last_arena) {
-			byte_t *previous_arena = nullptr;
-			std::memcpy(&previous_arena, last_arena, sizeof(byte_t *));
+			byte_t* previous_arena = nullptr;
+			std::memcpy(&previous_arena, last_arena, sizeof(byte_t*));
 			std::size_t last_cap = 0;
-			std::memcpy(&last_cap, last_arena + sizeof(byte_t *), sizeof(std::size_t));
-			page_allocator_t {}.deallocate(last_arena, last_cap);
+			std::memcpy(&last_cap, last_arena + sizeof(byte_t*), sizeof(std::size_t));
+			page_allocator_t{}.deallocate(last_arena, last_cap);
 			last_arena = previous_arena;
 		}
 
@@ -789,37 +699,36 @@ public:
 	}
 
 	/**
-	 *  @brief Copy constructor.
-	 *  @note This is a no-op copy constructor since the allocator is not copyable.
+     *  @brief Copy constructor.
+     *  @note This is a no-op copy constructor since the allocator is not copyable.
 	 */
-	memory_mapping_allocator_gt(memory_mapping_allocator_gt const &) noexcept {
-	}
+	memory_mapping_allocator_gt(memory_mapping_allocator_gt const&) noexcept {}
 
 	/**
-	 *  @brief Copy assignment operator.
-	 *  @note This is a no-op copy assignment operator since the allocator is not copyable.
-	 *  @return Reference to the allocator after the assignment.
+     *  @brief Copy assignment operator.
+     *  @note This is a no-op copy assignment operator since the allocator is not copyable.
+     *  @return Reference to the allocator after the assignment.
 	 */
-	memory_mapping_allocator_gt &operator=(memory_mapping_allocator_gt const &) noexcept {
+	memory_mapping_allocator_gt& operator=(memory_mapping_allocator_gt const&) noexcept {
 		reset();
 		return *this;
 	}
 
 	/**
-	 *  @brief Allocates an @b uninitialized block of memory of the specified size.
-	 *  @param count_bytes The number of bytes to allocate.
-	 *  @return A pointer to the allocated memory block, or `nullptr` if allocation fails.
+     *  @brief Allocates an @b uninitialized block of memory of the specified size.
+     *  @param count_bytes The number of bytes to allocate.
+     *  @return A pointer to the allocated memory block, or `nullptr` if allocation fails.
 	 */
-	inline byte_t *allocate(std::size_t count_bytes) noexcept {
+	inline byte_t* allocate(std::size_t count_bytes) noexcept {
 		std::size_t extended_bytes = divide_round_up<alignment_ak>(count_bytes) * alignment_ak;
 		std::unique_lock<std::mutex> lock(mutex_);
 		if (!last_arena_ || (last_usage_ + extended_bytes >= last_capacity_)) {
 			std::size_t new_cap = (std::max)(last_capacity_, ceil2(extended_bytes)) * capacity_multiplier();
-			byte_t *new_arena = page_allocator_t {}.allocate(new_cap);
+			byte_t* new_arena = page_allocator_t{}.allocate(new_cap);
 			if (!new_arena)
 				return nullptr;
-			std::memcpy(new_arena, &last_arena_, sizeof(byte_t *));
-			std::memcpy(new_arena + sizeof(byte_t *), &new_cap, sizeof(std::size_t));
+			std::memcpy(new_arena, &last_arena_, sizeof(byte_t*));
+			std::memcpy(new_arena + sizeof(byte_t*), &new_cap, sizeof(std::size_t));
 
 			wasted_space_ += total_reserved();
 			last_arena_ = new_arena;
@@ -832,8 +741,8 @@ public:
 	}
 
 	/**
-	 *  @brief Returns the amount of memory used by the allocator across all arenas.
-	 *  @return The amount of space in bytes.
+     *  @brief Returns the amount of memory used by the allocator across all arenas.
+     *  @return The amount of space in bytes.
 	 */
 	std::size_t total_allocated() const noexcept {
 		if (!last_arena_)
@@ -848,27 +757,21 @@ public:
 	}
 
 	/**
-	 *  @brief Returns the amount of wasted space due to alignment.
-	 *  @return The amount of wasted space in bytes.
+     *  @brief Returns the amount of wasted space due to alignment.
+     *  @return The amount of wasted space in bytes.
 	 */
-	std::size_t total_wasted() const noexcept {
-		return wasted_space_;
-	}
+	std::size_t total_wasted() const noexcept { return wasted_space_; }
 
 	/**
-	 *  @brief Returns the amount of remaining memory already reserved but not yet used.
-	 *  @return The amount of reserved memory in bytes.
+     *  @brief Returns the amount of remaining memory already reserved but not yet used.
+     *  @return The amount of reserved memory in bytes.
 	 */
-	std::size_t total_reserved() const noexcept {
-		return last_arena_ ? last_capacity_ - last_usage_ : 0;
-	}
+	std::size_t total_reserved() const noexcept { return last_arena_ ? last_capacity_ - last_usage_ : 0; }
 
 	/**
-	 *  @warning The very first memory de-allocation discards all the arenas!
+     *  @warning The very first memory de-allocation discards all the arenas!
 	 */
-	void deallocate(byte_t * = nullptr, std::size_t = 0) noexcept {
-		reset();
-	}
+	void deallocate(byte_t* = nullptr, std::size_t = 0) noexcept { reset(); }
 };
 
 using memory_mapping_allocator_t = memory_mapping_allocator_gt<>;
@@ -884,7 +787,7 @@ class unfair_shared_mutex_t {
 		idle_k = 0,
 		writing_k = -1,
 	};
-	std::atomic<std::int32_t> state_ {idle_k};
+	std::atomic<std::int32_t> state_{idle_k};
 
 public:
 	inline void lock() noexcept {
@@ -897,9 +800,7 @@ public:
 		}
 	}
 
-	inline void unlock() noexcept {
-		state_.store(idle_k, std::memory_order_release);
-	}
+	inline void unlock() noexcept { state_.store(idle_k, std::memory_order_release); }
 
 	inline void lock_shared() noexcept {
 		std::int32_t raw;
@@ -917,12 +818,10 @@ public:
 		}
 	}
 
-	inline void unlock_shared() noexcept {
-		state_.fetch_sub(1, std::memory_order_release);
-	}
+	inline void unlock_shared() noexcept { state_.fetch_sub(1, std::memory_order_release); }
 
 	/**
-	 *  @brief Try upgrades the current `lock_shared()` to a unique `lock()` state.
+     *  @brief Try upgrades the current `lock_shared()` to a unique `lock()` state.
 	 */
 	inline bool try_escalate() noexcept {
 		std::int32_t one_read = 1;
@@ -930,8 +829,8 @@ public:
 	}
 
 	/**
-	 *  @brief Escalates current lock potentially loosing control in the middle.
-	 *  It's a shortcut for `try_escalate`-`unlock_shared`-`lock` trio.
+     *  @brief Escalates current lock potentially loosing control in the middle.
+     *  It's a shortcut for `try_escalate`-`unlock_shared`-`lock` trio.
 	 */
 	inline void unsafe_escalate() noexcept {
 		if (!try_escalate()) {
@@ -941,7 +840,7 @@ public:
 	}
 
 	/**
-	 *  @brief Upgrades the current `lock_shared()` to a unique `lock()` state.
+     *  @brief Upgrades the current `lock_shared()` to a unique `lock()` state.
 	 */
 	inline void escalate() noexcept {
 		while (!try_escalate())
@@ -949,7 +848,7 @@ public:
 	}
 
 	/**
-	 *  @brief De-escalation of a previously escalated state.
+     *  @brief De-escalation of a previously escalated state.
 	 */
 	inline void de_escalate() noexcept {
 		std::int32_t one_read = 1;
@@ -957,87 +856,62 @@ public:
 	}
 };
 
-template <typename mutex_at = unfair_shared_mutex_t>
-class shared_lock_gt {
-	mutex_at &mutex_;
+template <typename mutex_at = unfair_shared_mutex_t> class shared_lock_gt {
+	mutex_at& mutex_;
 
 public:
-	inline explicit shared_lock_gt(mutex_at &m) noexcept : mutex_(m) {
-		mutex_.lock_shared();
-	}
-	inline ~shared_lock_gt() noexcept {
-		mutex_.unlock_shared();
-	}
+	inline explicit shared_lock_gt(mutex_at& m) noexcept : mutex_(m) { mutex_.lock_shared(); }
+	inline ~shared_lock_gt() noexcept { mutex_.unlock_shared(); }
 };
 
 /**
  *  @brief  Utility class used to cast arrays of one scalar type to another,
  *          avoiding unnecessary conversions.
  */
-template <typename from_scalar_at, typename to_scalar_at>
-struct cast_gt {
-	inline bool operator()(byte_t const *input, std::size_t dim, byte_t *output) const {
-		from_scalar_at const *typed_input = reinterpret_cast<from_scalar_at const *>(input);
-		to_scalar_at *typed_output = reinterpret_cast<to_scalar_at *>(output);
-		auto converter = [](from_scalar_at from) {
-			return to_scalar_at(from);
-		};
+template <typename from_scalar_at, typename to_scalar_at> struct cast_gt {
+	inline bool operator()(byte_t const* input, std::size_t dim, byte_t* output) const {
+		from_scalar_at const* typed_input = reinterpret_cast<from_scalar_at const*>(input);
+		to_scalar_at* typed_output = reinterpret_cast<to_scalar_at*>(output);
+		auto converter = [](from_scalar_at from) { return to_scalar_at(from); };
 		std::transform(typed_input, typed_input + dim, typed_output, converter);
 		return true;
 	}
 };
 
-template <>
-struct cast_gt<f32_t, f32_t> {
-	bool operator()(byte_t const *, std::size_t, byte_t *) const {
-		return false;
-	}
+template <> struct cast_gt<f32_t, f32_t> {
+	bool operator()(byte_t const*, std::size_t, byte_t*) const { return false; }
 };
 
-template <>
-struct cast_gt<f64_t, f64_t> {
-	bool operator()(byte_t const *, std::size_t, byte_t *) const {
-		return false;
-	}
+template <> struct cast_gt<f64_t, f64_t> {
+	bool operator()(byte_t const*, std::size_t, byte_t*) const { return false; }
 };
 
-template <>
-struct cast_gt<f16_bits_t, f16_bits_t> {
-	bool operator()(byte_t const *, std::size_t, byte_t *) const {
-		return false;
-	}
+template <> struct cast_gt<f16_bits_t, f16_bits_t> {
+	bool operator()(byte_t const*, std::size_t, byte_t*) const { return false; }
 };
 
-template <>
-struct cast_gt<i8_t, i8_t> {
-	bool operator()(byte_t const *, std::size_t, byte_t *) const {
-		return false;
-	}
+template <> struct cast_gt<i8_t, i8_t> {
+	bool operator()(byte_t const*, std::size_t, byte_t*) const { return false; }
 };
 
-template <>
-struct cast_gt<b1x8_t, b1x8_t> {
-	bool operator()(byte_t const *, std::size_t, byte_t *) const {
-		return false;
-	}
+template <> struct cast_gt<b1x8_t, b1x8_t> {
+	bool operator()(byte_t const*, std::size_t, byte_t*) const { return false; }
 };
 
-template <typename from_scalar_at>
-struct cast_gt<from_scalar_at, b1x8_t> {
-	inline bool operator()(byte_t const *input, std::size_t dim, byte_t *output) const {
-		from_scalar_at const *typed_input = reinterpret_cast<from_scalar_at const *>(input);
-		unsigned char *typed_output = reinterpret_cast<unsigned char *>(output);
+template <typename from_scalar_at> struct cast_gt<from_scalar_at, b1x8_t> {
+	inline bool operator()(byte_t const* input, std::size_t dim, byte_t* output) const {
+		from_scalar_at const* typed_input = reinterpret_cast<from_scalar_at const*>(input);
+		unsigned char* typed_output = reinterpret_cast<unsigned char*>(output);
 		for (std::size_t i = 0; i != dim; ++i)
 			typed_output[i / CHAR_BIT] |= bool(typed_input[i]) ? (128 >> (i & (CHAR_BIT - 1))) : 0;
 		return true;
 	}
 };
 
-template <typename to_scalar_at>
-struct cast_gt<b1x8_t, to_scalar_at> {
-	inline bool operator()(byte_t const *input, std::size_t dim, byte_t *output) const {
-		unsigned char const *typed_input = reinterpret_cast<unsigned char const *>(input);
-		to_scalar_at *typed_output = reinterpret_cast<to_scalar_at *>(output);
+template <typename to_scalar_at> struct cast_gt<b1x8_t, to_scalar_at> {
+	inline bool operator()(byte_t const* input, std::size_t dim, byte_t* output) const {
+		unsigned char const* typed_input = reinterpret_cast<unsigned char const*>(input);
+		to_scalar_at* typed_output = reinterpret_cast<to_scalar_at*>(output);
 		for (std::size_t i = 0; i != dim; ++i)
 			typed_output[i] = bool(typed_input[i / CHAR_BIT] & (128 >> (i & (CHAR_BIT - 1))));
 		return true;
@@ -1049,86 +923,57 @@ struct cast_gt<b1x8_t, to_scalar_at> {
  *          values within [-1,1] range, quantized to integers [-100,100].
  */
 class i8_converted_t {
-	std::int8_t int8_ {};
+	std::int8_t int8_{};
 
 public:
-	constexpr static float divisor_k = 100.f;
+	constexpr static f32_t divisor_k = 100.f;
 	constexpr static std::int8_t min_k = -100;
 	constexpr static std::int8_t max_k = 100;
 
-	inline i8_converted_t() noexcept : int8_(0) {
-	}
-	inline i8_converted_t(bool v) noexcept : int8_(v ? max_k : 0) {
-	}
+	inline i8_converted_t() noexcept : int8_(0) {}
+	inline i8_converted_t(bool v) noexcept : int8_(v ? max_k : 0) {}
 
-	inline i8_converted_t(i8_converted_t &&) = default;
-	inline i8_converted_t &operator=(i8_converted_t &&) = default;
-	inline i8_converted_t(i8_converted_t const &) = default;
-	inline i8_converted_t &operator=(i8_converted_t const &) = default;
+	inline i8_converted_t(i8_converted_t&&) = default;
+	inline i8_converted_t& operator=(i8_converted_t&&) = default;
+	inline i8_converted_t(i8_converted_t const&) = default;
+	inline i8_converted_t& operator=(i8_converted_t const&) = default;
 
-	inline operator float() const noexcept {
-		return float(int8_) / divisor_k;
-	}
-	inline operator f16_t() const noexcept {
-		return float(int8_) / divisor_k;
-	}
-	inline operator double() const noexcept {
-		return double(int8_) / divisor_k;
-	}
-	inline explicit operator bool() const noexcept {
-		return int8_ > (max_k / 2);
-	}
-	inline explicit operator std::int8_t() const noexcept {
-		return int8_;
-	}
-	inline explicit operator std::int16_t() const noexcept {
-		return int8_;
-	}
-	inline explicit operator std::int32_t() const noexcept {
-		return int8_;
-	}
-	inline explicit operator std::int64_t() const noexcept {
-		return int8_;
-	}
+	inline operator f16_t() const noexcept { return static_cast<f16_t>(f32_t(int8_) / divisor_k); }
+	inline operator f32_t() const noexcept { return f32_t(int8_) / divisor_k; }
+	inline operator f64_t() const noexcept { return f64_t(int8_) / divisor_k; }
+	inline explicit operator bool() const noexcept { return int8_ > (max_k / 2); }
+	inline explicit operator std::int8_t() const noexcept { return int8_; }
+	inline explicit operator std::int16_t() const noexcept { return int8_; }
+	inline explicit operator std::int32_t() const noexcept { return int8_; }
+	inline explicit operator std::int64_t() const noexcept { return int8_; }
 
 	inline i8_converted_t(f16_t v)
-	    : int8_(usearch::clamp<std::int8_t>(static_cast<std::int8_t>(v * divisor_k), min_k, max_k)) {
-	}
-	inline i8_converted_t(float v)
-	    : int8_(usearch::clamp<std::int8_t>(static_cast<std::int8_t>(v * divisor_k), min_k, max_k)) {
-	}
-	inline i8_converted_t(double v)
-	    : int8_(usearch::clamp<std::int8_t>(static_cast<std::int8_t>(v * divisor_k), min_k, max_k)) {
-	}
+	    : int8_(usearch::clamp<std::int8_t>(static_cast<std::int8_t>(v * divisor_k), min_k, max_k)) {}
+	inline i8_converted_t(f32_t v)
+	    : int8_(usearch::clamp<std::int8_t>(static_cast<std::int8_t>(v * divisor_k), min_k, max_k)) {}
+	inline i8_converted_t(f64_t v)
+	    : int8_(usearch::clamp<std::int8_t>(static_cast<std::int8_t>(v * divisor_k), min_k, max_k)) {}
 };
 
-f16_bits_t::f16_bits_t(i8_converted_t v) noexcept : uint16_(f32_to_f16(v)) {
-}
+f16_bits_t::f16_bits_t(i8_converted_t v) noexcept : uint16_(f32_to_f16(v)) {}
 
-template <>
-struct cast_gt<i8_t, f16_t> : public cast_gt<i8_converted_t, f16_t> {};
-template <>
-struct cast_gt<i8_t, f32_t> : public cast_gt<i8_converted_t, f32_t> {};
-template <>
-struct cast_gt<i8_t, f64_t> : public cast_gt<i8_converted_t, f64_t> {};
+template <> struct cast_gt<i8_t, f16_t> : public cast_gt<i8_converted_t, f16_t> {};
+template <> struct cast_gt<i8_t, f32_t> : public cast_gt<i8_converted_t, f32_t> {};
+template <> struct cast_gt<i8_t, f64_t> : public cast_gt<i8_converted_t, f64_t> {};
 
-template <>
-struct cast_gt<f16_t, i8_t> : public cast_gt<f16_t, i8_converted_t> {};
-template <>
-struct cast_gt<f32_t, i8_t> : public cast_gt<f32_t, i8_converted_t> {};
-template <>
-struct cast_gt<f64_t, i8_t> : public cast_gt<f64_t, i8_converted_t> {};
+template <> struct cast_gt<f16_t, i8_t> : public cast_gt<f16_t, i8_converted_t> {};
+template <> struct cast_gt<f32_t, i8_t> : public cast_gt<f32_t, i8_converted_t> {};
+template <> struct cast_gt<f64_t, i8_t> : public cast_gt<f64_t, i8_converted_t> {};
 
 /**
  *  @brief  Inner (Dot) Product distance.
  */
-template <typename scalar_at = float, typename result_at = scalar_at>
-struct metric_ip_gt {
+template <typename scalar_at = float, typename result_at = scalar_at> struct metric_ip_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t dim) const noexcept {
-		result_t ab {};
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t dim) const noexcept {
+		result_t ab{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : ab)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1148,13 +993,12 @@ struct metric_ip_gt {
  *          Unless you are running on an tiny embedded platform, this metric
  *          is recommended over `::metric_ip_gt` for low-precision scalars.
  */
-template <typename scalar_at = float, typename result_at = scalar_at>
-struct metric_cos_gt {
+template <typename scalar_at = float, typename result_at = scalar_at> struct metric_cos_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t dim) const noexcept {
-		result_t ab {}, a2 {}, b2 {};
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t dim) const noexcept {
+		result_t ab{}, a2{}, b2{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : ab, a2, b2)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1162,10 +1006,11 @@ struct metric_cos_gt {
 #elif defined(USEARCH_DEFINED_GCC)
 #pragma GCC ivdep
 #endif
-		for (std::size_t i = 0; i != dim; ++i)
-			ab += result_t(a[i]) * result_t(b[i]), //
-			    a2 += square<result_t>(a[i]),      //
-			    b2 += square<result_t>(b[i]);
+		for (std::size_t i = 0; i != dim; ++i) {
+			result_t ai = static_cast<result_t>(a[i]);
+			result_t bi = static_cast<result_t>(b[i]);
+			ab += ai * bi, a2 += square(ai), b2 += square(bi);
+		}
 
 		result_t result_if_zero[2][2];
 		result_if_zero[0][0] = 1 - ab / (std::sqrt(a2) * std::sqrt(b2));
@@ -1179,13 +1024,12 @@ struct metric_cos_gt {
  *  @brief  Squared Euclidean (L2) distance.
  *          Square root is avoided at the end, as it won't affect the ordering.
  */
-template <typename scalar_at = float, typename result_at = scalar_at>
-struct metric_l2sq_gt {
+template <typename scalar_at = float, typename result_at = scalar_at> struct metric_l2sq_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t dim) const noexcept {
-		result_t ab_deltas_sq {};
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t dim) const noexcept {
+		result_t ab_deltas_sq{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : ab_deltas_sq)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1193,8 +1037,11 @@ struct metric_l2sq_gt {
 #elif defined(USEARCH_DEFINED_GCC)
 #pragma GCC ivdep
 #endif
-		for (std::size_t i = 0; i != dim; ++i)
-			ab_deltas_sq += square(result_t(a[i]) - result_t(b[i]));
+		for (std::size_t i = 0; i != dim; ++i) {
+			result_t ai = static_cast<result_t>(a[i]);
+			result_t bi = static_cast<result_t>(b[i]);
+			ab_deltas_sq += square(ai - bi);
+		}
 		return ab_deltas_sq;
 	}
 };
@@ -1204,8 +1051,7 @@ struct metric_l2sq_gt {
  *          two arrays of integers. An example would be a textual document,
  *          tokenized and hashed into a fixed-capacity bitset.
  */
-template <typename scalar_at = std::uint64_t, typename result_at = std::size_t>
-struct metric_hamming_gt {
+template <typename scalar_at = std::uint64_t, typename result_at = std::size_t> struct metric_hamming_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 	static_assert( //
@@ -1213,9 +1059,9 @@ struct metric_hamming_gt {
 	        (std::is_enum<scalar_t>::value && std::is_unsigned<typename std::underlying_type<scalar_t>::type>::value),
 	    "Hamming distance requires unsigned integral words");
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t words) const noexcept {
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t words) const noexcept {
 		constexpr std::size_t bits_per_word_k = sizeof(scalar_t) * CHAR_BIT;
-		result_t matches {};
+		result_t matches{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : matches)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1233,8 +1079,7 @@ struct metric_hamming_gt {
  *  @brief  Tanimoto distance is the intersection over bitwise union.
  *          Often used in chemistry and biology to compare molecular fingerprints.
  */
-template <typename scalar_at = std::uint64_t, typename result_at = float>
-struct metric_tanimoto_gt {
+template <typename scalar_at = std::uint64_t, typename result_at = float> struct metric_tanimoto_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 	static_assert( //
@@ -1243,10 +1088,10 @@ struct metric_tanimoto_gt {
 	    "Tanimoto distance requires unsigned integral words");
 	static_assert(std::is_floating_point<result_t>::value, "Tanimoto distance will be a fraction");
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t words) const noexcept {
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t words) const noexcept {
 		constexpr std::size_t bits_per_word_k = sizeof(scalar_t) * CHAR_BIT;
-		result_t and_count {};
-		result_t or_count {};
+		result_t and_count{};
+		result_t or_count{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : and_count, or_count)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1254,9 +1099,10 @@ struct metric_tanimoto_gt {
 #elif defined(USEARCH_DEFINED_GCC)
 #pragma GCC ivdep
 #endif
-		for (std::size_t i = 0; i != words; ++i)
-			and_count += std::bitset<bits_per_word_k>(a[i] & b[i]).count(),
-			    or_count += std::bitset<bits_per_word_k>(a[i] | b[i]).count();
+		for (std::size_t i = 0; i != words; ++i) {
+			and_count += std::bitset<bits_per_word_k>(a[i] & b[i]).count();
+			or_count += std::bitset<bits_per_word_k>(a[i] | b[i]).count();
+		}
 		return 1 - result_t(and_count) / or_count;
 	}
 };
@@ -1265,8 +1111,7 @@ struct metric_tanimoto_gt {
  *  @brief  Sorensen-Dice or F1 distance is the intersection over bitwise union.
  *          Often used in chemistry and biology to compare molecular fingerprints.
  */
-template <typename scalar_at = std::uint64_t, typename result_at = float>
-struct metric_sorensen_gt {
+template <typename scalar_at = std::uint64_t, typename result_at = float> struct metric_sorensen_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 	static_assert( //
@@ -1275,10 +1120,10 @@ struct metric_sorensen_gt {
 	    "Sorensen-Dice distance requires unsigned integral words");
 	static_assert(std::is_floating_point<result_t>::value, "Sorensen-Dice distance will be a fraction");
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t words) const noexcept {
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t words) const noexcept {
 		constexpr std::size_t bits_per_word_k = sizeof(scalar_t) * CHAR_BIT;
-		result_t and_count {};
-		result_t any_count {};
+		result_t and_count{};
+		result_t any_count{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : and_count, any_count)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1286,9 +1131,10 @@ struct metric_sorensen_gt {
 #elif defined(USEARCH_DEFINED_GCC)
 #pragma GCC ivdep
 #endif
-		for (std::size_t i = 0; i != words; ++i)
-			and_count += std::bitset<bits_per_word_k>(a[i] & b[i]).count(),
-			    any_count += std::bitset<bits_per_word_k>(a[i]).count() + std::bitset<bits_per_word_k>(b[i]).count();
+		for (std::size_t i = 0; i != words; ++i) {
+			and_count += std::bitset<bits_per_word_k>(a[i] & b[i]).count();
+			any_count += std::bitset<bits_per_word_k>(a[i]).count() + std::bitset<bits_per_word_k>(b[i]).count();
+		}
 		return 1 - 2 * result_t(and_count) / any_count;
 	}
 };
@@ -1299,17 +1145,16 @@ struct metric_sorensen_gt {
  *          using the IDs of tokens present in them.
  *          Similar to `metric_tanimoto_gt` for dense representations.
  */
-template <typename scalar_at = std::int32_t, typename result_at = float>
-struct metric_jaccard_gt {
+template <typename scalar_at = std::int32_t, typename result_at = float> struct metric_jaccard_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 	static_assert(!std::is_floating_point<scalar_t>::value, "Jaccard distance requires integral scalars");
 
 	inline result_t operator()( //
-	    scalar_t const *a, scalar_t const *b, std::size_t a_length, std::size_t b_length) const noexcept {
-		result_t intersection {};
-		std::size_t i {};
-		std::size_t j {};
+	    scalar_t const* a, scalar_t const* b, std::size_t a_length, std::size_t b_length) const noexcept {
+		result_t intersection{};
+		std::size_t i{};
+		std::size_t j{};
 		while (i != a_length && j != b_length) {
 			intersection += a[i] == b[j];
 			i += a[i] < b[j];
@@ -1320,16 +1165,22 @@ struct metric_jaccard_gt {
 };
 
 /**
- *  @brief  Measures Pearson Correlation between two sequences.
+ *  @brief  Measures Pearson Correlation between two sequences in a single pass.
  */
-template <typename scalar_at = float, typename result_at = float>
-struct metric_pearson_gt {
+template <typename scalar_at = float, typename result_at = float> struct metric_pearson_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t dim) const noexcept {
-		result_t a_sum {}, b_sum {}, ab_sum {};
-		result_t a_sq_sum {}, b_sq_sum {};
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t dim) const noexcept {
+		// The correlation coefficient can't be defined for one or zero-dimensional data.
+		if (dim <= 1)
+			return 0;
+		// Conventional Pearson Correlation Coefficient definiton subtracts the mean value of each
+		// sequence from each element, before dividing them. WikiPedia article suggests a convenient
+		// single-pass algorithm for calculating sample correlations, though depending on the numbers
+		// involved, it can sometimes be numerically unstable.
+		result_t a_sum{}, b_sum{}, ab_sum{};
+		result_t a_sq_sum{}, b_sq_sum{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : a_sum, b_sum, ab_sum, a_sq_sum, b_sq_sum)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1338,29 +1189,33 @@ struct metric_pearson_gt {
 #pragma GCC ivdep
 #endif
 		for (std::size_t i = 0; i != dim; ++i) {
-			a_sum += result_t(a[i]);
-			b_sum += result_t(b[i]);
-			ab_sum += result_t(a[i]) * result_t(b[i]);
-			a_sq_sum += result_t(a[i]) * result_t(a[i]);
-			b_sq_sum += result_t(b[i]) * result_t(b[i]);
+			result_t ai = static_cast<result_t>(a[i]);
+			result_t bi = static_cast<result_t>(b[i]);
+			a_sum += ai;
+			b_sum += bi;
+			ab_sum += ai * bi;
+			a_sq_sum += ai * ai;
+			b_sq_sum += bi * bi;
 		}
-		result_t denom = std::sqrt((dim * a_sq_sum - a_sum * a_sum) * (dim * b_sq_sum - b_sum * b_sum));
-		result_t corr = (dim * ab_sum - a_sum * b_sum) / denom;
-		return -corr;
+		result_t denom = (dim * a_sq_sum - a_sum * a_sum) * (dim * b_sq_sum - b_sum * b_sum);
+		if (denom == 0)
+			return 0;
+		result_t corr = dim * ab_sum - a_sum * b_sum;
+		denom = std::sqrt(denom);
+		return -corr / denom;
 	}
 };
 
 /**
  *  @brief  Measures Jensen-Shannon Divergence between two probability distributions.
  */
-template <typename scalar_at = float, typename result_at = float>
-struct metric_divergence_gt {
+template <typename scalar_at = float, typename result_at = float> struct metric_divergence_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 
-	inline result_t operator()(scalar_t const *p, scalar_t const *q, std::size_t dim) const noexcept {
-		result_t kld_pm {}, kld_qm {};
-		scalar_t epsilon = std::numeric_limits<scalar_t>::epsilon();
+	inline result_t operator()(scalar_t const* p, scalar_t const* q, std::size_t dim) const noexcept {
+		result_t kld_pm{}, kld_qm{};
+		result_t epsilon = std::numeric_limits<result_t>::epsilon();
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : kld_pm, kld_qm)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1369,9 +1224,11 @@ struct metric_divergence_gt {
 #pragma GCC ivdep
 #endif
 		for (std::size_t i = 0; i != dim; ++i) {
-			result_t mi = result_t(p[i] + q[i]) / 2 + epsilon;
-			kld_pm += p[i] * std::log((p[i] + epsilon) / mi);
-			kld_qm += q[i] * std::log((q[i] + epsilon) / mi);
+			result_t pi = static_cast<result_t>(p[i]);
+			result_t qi = static_cast<result_t>(q[i]);
+			result_t mi = (pi + qi) / 2 + epsilon;
+			kld_pm += pi * std::log((pi + epsilon) / mi);
+			kld_qm += qi * std::log((qi + epsilon) / mi);
 		}
 		return (kld_pm + kld_qm) / 2;
 	}
@@ -1381,8 +1238,8 @@ struct cos_i8_t {
 	using scalar_t = i8_t;
 	using result_t = f32_t;
 
-	inline result_t operator()(i8_t const *a, i8_t const *b, std::size_t dim) const noexcept {
-		std::int32_t ab {}, a2 {}, b2 {};
+	inline result_t operator()(i8_t const* a, i8_t const* b, std::size_t dim) const noexcept {
+		std::int32_t ab{}, a2{}, b2{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : ab, a2, b2)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1391,8 +1248,8 @@ struct cos_i8_t {
 #pragma GCC ivdep
 #endif
 		for (std::size_t i = 0; i != dim; i++) {
-			std::int16_t ai {a[i]};
-			std::int16_t bi {b[i]};
+			std::int16_t ai{a[i]};
+			std::int16_t bi{b[i]};
 			ab += ai * bi;
 			a2 += square(ai);
 			b2 += square(bi);
@@ -1405,8 +1262,8 @@ struct l2sq_i8_t {
 	using scalar_t = i8_t;
 	using result_t = f32_t;
 
-	inline result_t operator()(i8_t const *a, i8_t const *b, std::size_t dim) const noexcept {
-		std::int32_t ab_deltas_sq {};
+	inline result_t operator()(i8_t const* a, i8_t const* b, std::size_t dim) const noexcept {
+		std::int32_t ab_deltas_sq{};
 #if USEARCH_USE_OPENMP
 #pragma omp simd reduction(+ : ab_deltas_sq)
 #elif defined(USEARCH_DEFINED_CLANG)
@@ -1416,7 +1273,7 @@ struct l2sq_i8_t {
 #endif
 		for (std::size_t i = 0; i != dim; i++)
 			ab_deltas_sq += square(std::int16_t(a[i]) - std::int16_t(b[i]));
-		return ab_deltas_sq;
+		return static_cast<result_t>(ab_deltas_sq);
 	}
 };
 
@@ -1424,13 +1281,12 @@ struct l2sq_i8_t {
  *  @brief  Haversine distance for the shortest distance between two nodes on
  *          the surface of a 3D sphere, defined with latitude and longitude.
  */
-template <typename scalar_at = float, typename result_at = scalar_at>
-struct metric_haversine_gt {
+template <typename scalar_at = float, typename result_at = scalar_at> struct metric_haversine_gt {
 	using scalar_t = scalar_at;
 	using result_t = result_at;
 	static_assert(!std::is_integral<scalar_t>::value, "Latitude and longitude must be floating-node");
 
-	inline result_t operator()(scalar_t const *a, scalar_t const *b, std::size_t = 2) const noexcept {
+	inline result_t operator()(scalar_t const* a, scalar_t const* b, std::size_t = 2) const noexcept {
 		result_t lat_a = a[0], lon_a = a[1];
 		result_t lat_b = b[0], lon_b = b[1];
 
@@ -1488,17 +1344,17 @@ private:
 
 public:
 	/**
-	 *  @brief  Computes the distance between two vectors of fixed length.
-	 *
-	 *  ! This is the only relevant function in the object. Everything else is just dynamic dispatch logic.
+     *  @brief  Computes the distance between two vectors of fixed length.
+     *
+     *  ! This is the only relevant function in the object. Everything else is just dynamic dispatch logic.
 	 */
-	inline result_t operator()(byte_t const *a, byte_t const *b) const noexcept {
+	inline result_t operator()(byte_t const* a, byte_t const* b) const noexcept {
 		return raw_ptr_(reinterpret_cast<punned_arg_t>(a), reinterpret_cast<punned_arg_t>(b), raw_arg3_, raw_arg4_);
 	}
 
 	inline metric_punned_t() noexcept = default;
-	inline metric_punned_t(metric_punned_t const &) noexcept = default;
-	inline metric_punned_t &operator=(metric_punned_t const &) noexcept = default;
+	inline metric_punned_t(metric_punned_t const&) noexcept = default;
+	inline metric_punned_t& operator=(metric_punned_t const&) noexcept = default;
 	inline metric_punned_t(                                //
 	    std::size_t dimensions,                            //
 	    metric_kind_t metric_kind = metric_kind_t::l2sq_k, //
@@ -1509,8 +1365,9 @@ public:
 #if USEARCH_USE_SIMSIMD
 		if (!configure_with_simsimd())
 			configure_with_auto_vectorized();
-#endif
+#else
 		configure_with_auto_vectorized();
+#endif
 
 		if (scalar_kind == scalar_kind_t::b1x8_k)
 			raw_arg3_ = raw_arg4_ = divide_round_up<CHAR_BIT>(dimensions_);
@@ -1528,37 +1385,22 @@ public:
 		(void)signature;
 	}
 
-	inline std::size_t dimensions() const noexcept {
-		return dimensions_;
-	}
-	inline metric_kind_t metric_kind() const noexcept {
-		return metric_kind_;
-	}
-	inline scalar_kind_t scalar_kind() const noexcept {
-		return scalar_kind_;
-	}
+	inline std::size_t dimensions() const noexcept { return dimensions_; }
+	inline metric_kind_t metric_kind() const noexcept { return metric_kind_; }
+	inline scalar_kind_t scalar_kind() const noexcept { return scalar_kind_; }
 
-	inline char const *isa_name() const noexcept {
+	inline char const* isa_name() const noexcept {
 #if USEARCH_USE_SIMSIMD
 		switch (isa_kind_) {
-		case simsimd_cap_serial_k:
-			return "serial";
-		case simsimd_cap_arm_neon_k:
-			return "neon";
-		case simsimd_cap_arm_sve_k:
-			return "sve";
-		case simsimd_cap_x86_avx2_k:
-			return "avx2";
-		case simsimd_cap_x86_avx512_k:
-			return "avx512";
-		case simsimd_cap_x86_avx2fp16_k:
-			return "avx2+f16";
-		case simsimd_cap_x86_avx512fp16_k:
-			return "avx512+f16";
-		case simsimd_cap_x86_avx512vpopcntdq_k:
-			return "avx512+popcnt";
-		default:
-			return "unknown";
+		case simsimd_cap_serial_k: return "serial";
+		case simsimd_cap_arm_neon_k: return "neon";
+		case simsimd_cap_arm_sve_k: return "sve";
+		case simsimd_cap_x86_avx2_k: return "avx2";
+		case simsimd_cap_x86_avx512_k: return "avx512";
+		case simsimd_cap_x86_avx2fp16_k: return "avx2+f16";
+		case simsimd_cap_x86_avx512fp16_k: return "avx512+f16";
+		case simsimd_cap_x86_avx512vpopcntdq_k: return "avx512+popcnt";
+		default: return "unknown";
 		}
 #endif
 		return "serial";
@@ -1579,45 +1421,21 @@ private:
 		simsimd_datatype_t datatype = simsimd_datatype_unknown_k;
 		simsimd_capability_t allowed = simsimd_cap_any_k;
 		switch (metric_kind_) {
-		case metric_kind_t::ip_k:
-			kind = simsimd_metric_ip_k;
-			break;
-		case metric_kind_t::cos_k:
-			kind = simsimd_metric_cos_k;
-			break;
-		case metric_kind_t::l2sq_k:
-			kind = simsimd_metric_l2sq_k;
-			break;
-		case metric_kind_t::hamming_k:
-			kind = simsimd_metric_hamming_k;
-			break;
-		case metric_kind_t::tanimoto_k:
-			kind = simsimd_metric_jaccard_k;
-			break;
-		case metric_kind_t::jaccard_k:
-			kind = simsimd_metric_jaccard_k;
-			break;
-		default:
-			break;
+		case metric_kind_t::ip_k: kind = simsimd_metric_ip_k; break;
+		case metric_kind_t::cos_k: kind = simsimd_metric_cos_k; break;
+		case metric_kind_t::l2sq_k: kind = simsimd_metric_l2sq_k; break;
+		case metric_kind_t::hamming_k: kind = simsimd_metric_hamming_k; break;
+		case metric_kind_t::tanimoto_k: kind = simsimd_metric_jaccard_k; break;
+		case metric_kind_t::jaccard_k: kind = simsimd_metric_jaccard_k; break;
+		default: break;
 		}
 		switch (scalar_kind_) {
-		case scalar_kind_t::f32_k:
-			datatype = simsimd_datatype_f32_k;
-			break;
-		case scalar_kind_t::f64_k:
-			datatype = simsimd_datatype_f64_k;
-			break;
-		case scalar_kind_t::f16_k:
-			datatype = simsimd_datatype_f16_k;
-			break;
-		case scalar_kind_t::i8_k:
-			datatype = simsimd_datatype_i8_k;
-			break;
-		case scalar_kind_t::b1x8_k:
-			datatype = simsimd_datatype_b8_k;
-			break;
-		default:
-			break;
+		case scalar_kind_t::f32_k: datatype = simsimd_datatype_f32_k; break;
+		case scalar_kind_t::f64_k: datatype = simsimd_datatype_f64_k; break;
+		case scalar_kind_t::f16_k: datatype = simsimd_datatype_f16_k; break;
+		case scalar_kind_t::i8_k: datatype = simsimd_datatype_i8_k; break;
+		case scalar_kind_t::b1x8_k: datatype = simsimd_datatype_b8_k; break;
+		default: break;
 		}
 		simsimd_metric_punned_t simd_metric = NULL;
 		simsimd_capability_t simd_kind = simsimd_cap_any_k;
@@ -1634,90 +1452,50 @@ private:
 		return configure_with_simsimd(static_capabilities);
 	}
 #else
-	bool configure_with_simsimd() noexcept {
-		return false;
-	}
+	bool configure_with_simsimd() noexcept { return false; }
 #endif
 
 	void configure_with_auto_vectorized() noexcept {
 		switch (metric_kind_) {
 		case metric_kind_t::ip_k: {
 			switch (scalar_kind_) {
-			case scalar_kind_t::f32_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<f32_t>>;
-				break;
-			case scalar_kind_t::f16_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<f16_t, f32_t>>;
-				break;
-			case scalar_kind_t::i8_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<i8_t, f32_t>>;
-				break;
-			case scalar_kind_t::f64_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<f64_t>>;
-				break;
-			default:
-				raw_ptr_ = nullptr;
-				break;
+			case scalar_kind_t::f32_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<f32_t>>; break;
+			case scalar_kind_t::f16_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<f16_t, f32_t>>; break;
+			case scalar_kind_t::i8_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<i8_t, f32_t>>; break;
+			case scalar_kind_t::f64_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_ip_gt<f64_t>>; break;
+			default: raw_ptr_ = nullptr; break;
 			}
 			break;
 		}
 		case metric_kind_t::cos_k: {
 			switch (scalar_kind_) {
-			case scalar_kind_t::f32_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<f32_t>>;
-				break;
-			case scalar_kind_t::f16_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<f16_t, f32_t>>;
-				break;
-			case scalar_kind_t::i8_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<i8_t, f32_t>>;
-				break;
-			case scalar_kind_t::f64_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<f64_t>>;
-				break;
-			default:
-				raw_ptr_ = nullptr;
-				break;
+			case scalar_kind_t::f32_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<f32_t>>; break;
+			case scalar_kind_t::f16_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<f16_t, f32_t>>; break;
+			case scalar_kind_t::i8_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<i8_t, f32_t>>; break;
+			case scalar_kind_t::f64_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_cos_gt<f64_t>>; break;
+			default: raw_ptr_ = nullptr; break;
 			}
 			break;
 		}
 		case metric_kind_t::l2sq_k: {
 			switch (scalar_kind_) {
-			case scalar_kind_t::f32_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<f32_t>>;
-				break;
-			case scalar_kind_t::f16_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<f16_t, f32_t>>;
-				break;
-			case scalar_kind_t::i8_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<i8_t, f32_t>>;
-				break;
-			case scalar_kind_t::f64_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<f64_t>>;
-				break;
-			default:
-				raw_ptr_ = nullptr;
-				break;
+			case scalar_kind_t::f32_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<f32_t>>; break;
+			case scalar_kind_t::f16_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<f16_t, f32_t>>; break;
+			case scalar_kind_t::i8_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<i8_t, f32_t>>; break;
+			case scalar_kind_t::f64_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_l2sq_gt<f64_t>>; break;
+			default: raw_ptr_ = nullptr; break;
 			}
 			break;
 		}
 		case metric_kind_t::pearson_k: {
 			switch (scalar_kind_) {
-			case scalar_kind_t::i8_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_pearson_gt<i8_t, f32_t>>;
-				break;
+			case scalar_kind_t::i8_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_pearson_gt<i8_t, f32_t>>; break;
 			case scalar_kind_t::f16_k:
 				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_pearson_gt<f16_t, f32_t>>;
 				break;
-			case scalar_kind_t::f32_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_pearson_gt<f32_t>>;
-				break;
-			case scalar_kind_t::f64_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_pearson_gt<f64_t>>;
-				break;
-			default:
-				raw_ptr_ = nullptr;
-				break;
+			case scalar_kind_t::f32_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_pearson_gt<f32_t>>; break;
+			case scalar_kind_t::f64_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_pearson_gt<f64_t>>; break;
+			default: raw_ptr_ = nullptr; break;
 			}
 			break;
 		}
@@ -1726,15 +1504,9 @@ private:
 			case scalar_kind_t::f16_k:
 				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_haversine_gt<f16_t, f32_t>>;
 				break;
-			case scalar_kind_t::f32_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_haversine_gt<f32_t>>;
-				break;
-			case scalar_kind_t::f64_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_haversine_gt<f64_t>>;
-				break;
-			default:
-				raw_ptr_ = nullptr;
-				break;
+			case scalar_kind_t::f32_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_haversine_gt<f32_t>>; break;
+			case scalar_kind_t::f64_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_haversine_gt<f64_t>>; break;
+			default: raw_ptr_ = nullptr; break;
 			}
 			break;
 		}
@@ -1743,30 +1515,17 @@ private:
 			case scalar_kind_t::f16_k:
 				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_divergence_gt<f16_t, f32_t>>;
 				break;
-			case scalar_kind_t::f32_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_divergence_gt<f32_t>>;
-				break;
-			case scalar_kind_t::f64_k:
-				raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_divergence_gt<f64_t>>;
-				break;
-			default:
-				raw_ptr_ = nullptr;
-				break;
+			case scalar_kind_t::f32_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_divergence_gt<f32_t>>; break;
+			case scalar_kind_t::f64_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_divergence_gt<f64_t>>; break;
+			default: raw_ptr_ = nullptr; break;
 			}
 			break;
 		}
 		case metric_kind_t::jaccard_k: // Equivalent to Tanimoto
-		case metric_kind_t::tanimoto_k:
-			raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_tanimoto_gt<b1x8_t>>;
-			break;
-		case metric_kind_t::hamming_k:
-			raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_hamming_gt<b1x8_t>>;
-			break;
-		case metric_kind_t::sorensen_k:
-			raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_sorensen_gt<b1x8_t>>;
-			break;
-		default:
-			return;
+		case metric_kind_t::tanimoto_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_tanimoto_gt<b1x8_t>>; break;
+		case metric_kind_t::hamming_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_hamming_gt<b1x8_t>>; break;
+		case metric_kind_t::sorensen_k: raw_ptr_ = (punned_ptr_t)&equidimensional_<metric_sorensen_gt<b1x8_t>>; break;
+		default: return;
 		}
 	}
 
@@ -1776,7 +1535,7 @@ private:
 	    punned_arg_t a_dimensions, punned_arg_t b_dimensions) noexcept {
 		using scalar_t = typename typed_at::scalar_t;
 		(void)b_dimensions;
-		return typed_at {}((scalar_t const *)a, (scalar_t const *)b, a_dimensions);
+		return typed_at{}((scalar_t const*)a, (scalar_t const*)b, a_dimensions);
 	}
 };
 
@@ -1787,41 +1546,29 @@ template <typename scalar_at> //
 class vectors_view_gt {
 	using scalar_t = scalar_at;
 
-	scalar_t const *begin_ {};
-	std::size_t dimensions_ {};
-	std::size_t count_ {};
-	std::size_t stride_bytes_ {};
+	scalar_t const* begin_{};
+	std::size_t dimensions_{};
+	std::size_t count_{};
+	std::size_t stride_bytes_{};
 
 public:
 	vectors_view_gt() noexcept = default;
-	vectors_view_gt(vectors_view_gt const &) noexcept = default;
-	vectors_view_gt &operator=(vectors_view_gt const &) noexcept = default;
+	vectors_view_gt(vectors_view_gt const&) noexcept = default;
+	vectors_view_gt& operator=(vectors_view_gt const&) noexcept = default;
 
-	vectors_view_gt(scalar_t const *begin, std::size_t dimensions, std::size_t count = 1) noexcept
-	    : vectors_view_gt(begin, dimensions, count, dimensions * sizeof(scalar_at)) {
-	}
+	vectors_view_gt(scalar_t const* begin, std::size_t dimensions, std::size_t count = 1) noexcept
+	    : vectors_view_gt(begin, dimensions, count, dimensions * sizeof(scalar_at)) {}
 
-	vectors_view_gt(scalar_t const *begin, std::size_t dimensions, std::size_t count, std::size_t stride_bytes) noexcept
-	    : begin_(begin), dimensions_(dimensions), count_(count), stride_bytes_(stride_bytes) {
-	}
+	vectors_view_gt(scalar_t const* begin, std::size_t dimensions, std::size_t count, std::size_t stride_bytes) noexcept
+	    : begin_(begin), dimensions_(dimensions), count_(count), stride_bytes_(stride_bytes) {}
 
-	explicit operator bool() const noexcept {
-		return begin_;
-	}
-	std::size_t size() const noexcept {
-		return count_;
-	}
-	std::size_t dimensions() const noexcept {
-		return dimensions_;
-	}
-	std::size_t stride() const noexcept {
-		return stride_bytes_;
-	}
-	scalar_t const *data() const noexcept {
-		return begin_;
-	}
-	scalar_t const *at(std::size_t i) const noexcept {
-		return reinterpret_cast<scalar_t const *>(reinterpret_cast<byte_t const *>(begin_) + i * stride_bytes_);
+	explicit operator bool() const noexcept { return begin_; }
+	std::size_t size() const noexcept { return count_; }
+	std::size_t dimensions() const noexcept { return dimensions_; }
+	std::size_t stride() const noexcept { return stride_bytes_; }
+	scalar_t const* data() const noexcept { return begin_; }
+	scalar_t const* at(std::size_t i) const noexcept {
+		return reinterpret_cast<scalar_t const*>(reinterpret_cast<byte_t const*>(begin_) + i * stride_bytes_);
 	}
 };
 
@@ -1853,21 +1600,21 @@ public:
 	template <typename scalar_at, typename executor_at = dummy_executor_t, typename progress_at = dummy_progress_t>
 	exact_search_results_t operator()(                                          //
 	    vectors_view_gt<scalar_at> dataset, vectors_view_gt<scalar_at> queries, //
-	    std::size_t wanted, metric_punned_t const &metric,                      //
-	    executor_at &&executor = executor_at {}, progress_at &&progress = progress_at {}) {
-		return operator()(                                                                      //
-		    metric,                                                                             //
-		    reinterpret_cast<byte_t const *>(dataset.data()), dataset.size(), dataset.stride(), //
-		    reinterpret_cast<byte_t const *>(queries.data()), queries.size(), queries.stride(), //
+	    std::size_t wanted, metric_punned_t const& metric,                      //
+	    executor_at&& executor = executor_at{}, progress_at&& progress = progress_at{}) {
+		return operator()(                                                                     //
+		    metric,                                                                            //
+		    reinterpret_cast<byte_t const*>(dataset.data()), dataset.size(), dataset.stride(), //
+		    reinterpret_cast<byte_t const*>(queries.data()), queries.size(), queries.stride(), //
 		    wanted, executor, progress);
 	}
 
 	template <typename executor_at = dummy_executor_t, typename progress_at = dummy_progress_t>
 	exact_search_results_t operator()(                                                     //
-	    byte_t const *dataset_data, std::size_t dataset_count, std::size_t dataset_stride, //
-	    byte_t const *queries_data, std::size_t queries_count, std::size_t queries_stride, //
-	    std::size_t wanted, metric_punned_t const &metric, executor_at &&executor = executor_at {},
-	    progress_at &&progress = progress_at {}) {
+	    byte_t const* dataset_data, std::size_t dataset_count, std::size_t dataset_stride, //
+	    byte_t const* queries_data, std::size_t queries_count, std::size_t queries_stride, //
+	    std::size_t wanted, metric_punned_t const& metric, executor_at&& executor = executor_at{},
+	    progress_at&& progress = progress_at{}) {
 
 		// Allocate temporary memory to store the distance matrix
 		// Previous version didn't need temporary memory, but the performance was much lower.
@@ -1879,15 +1626,15 @@ public:
 		if (keys_and_distances.size() < tasks_count * 2)
 			return {};
 
-		exact_offset_and_distance_t *keys_and_distances_per_dataset = keys_and_distances.data();
-		exact_offset_and_distance_t *keys_and_distances_per_query = keys_and_distances_per_dataset + tasks_count;
+		exact_offset_and_distance_t* keys_and_distances_per_dataset = keys_and_distances.data();
+		exact_offset_and_distance_t* keys_and_distances_per_query = keys_and_distances_per_dataset + tasks_count;
 
 		// §1. Compute distances in a data-parallel fashion
-		std::atomic<std::size_t> processed {0};
+		std::atomic<std::size_t> processed{0};
 		executor.dynamic(dataset_count, [&](std::size_t thread_idx, std::size_t dataset_idx) {
-			byte_t const *dataset = dataset_data + dataset_idx * dataset_stride;
+			byte_t const* dataset = dataset_data + dataset_idx * dataset_stride;
 			for (std::size_t query_idx = 0; query_idx != queries_count; ++query_idx) {
-				byte_t const *query = queries_data + query_idx * queries_stride;
+				byte_t const* query = queries_data + query_idx * queries_stride;
 				auto distance = metric(dataset, query);
 				std::size_t task_idx = queries_count * dataset_idx + query_idx;
 				keys_and_distances_per_dataset[task_idx].offset = static_cast<u32_t>(dataset_idx);
@@ -1956,47 +1703,43 @@ public:
 	using equals_t = equals_at;
 	using allocator_t = allocator_at;
 
-	static constexpr std::size_t slots_per_bucket() {
-		return 64;
-	}
+	static constexpr std::size_t slots_per_bucket() { return 64; }
 	static constexpr std::size_t bytes_per_bucket() {
 		return slots_per_bucket() * sizeof(element_t) + sizeof(bucket_header_t);
 	}
 
 private:
 	struct bucket_header_t {
-		std::uint64_t populated {};
-		std::uint64_t deleted {};
+		std::uint64_t populated{};
+		std::uint64_t deleted{};
 	};
-	char *data_ = nullptr;
+	char* data_ = nullptr;
 	std::size_t buckets_ = 0;
 	std::size_t populated_slots_ = 0;
 	/// @brief  Number of slots
 	std::size_t capacity_slots_ = 0;
 
 	struct slot_ref_t {
-		bucket_header_t &header;
+		bucket_header_t& header;
 		std::uint64_t mask;
-		element_t &element;
+		element_t& element;
 	};
 
-	slot_ref_t slot_ref(char *data, std::size_t slot_index) const noexcept {
+	slot_ref_t slot_ref(char* data, std::size_t slot_index) const noexcept {
 		std::size_t bucket_index = slot_index / slots_per_bucket();
 		std::size_t in_bucket_index = slot_index % slots_per_bucket();
 		auto bucket_pointer = data + bytes_per_bucket() * bucket_index;
 		auto slot_pointer = bucket_pointer + sizeof(bucket_header_t) + sizeof(element_t) * in_bucket_index;
 		return {
-		    *reinterpret_cast<bucket_header_t *>(bucket_pointer),
+		    *reinterpret_cast<bucket_header_t*>(bucket_pointer),
 		    static_cast<std::uint64_t>(1ull) << in_bucket_index,
-		    *reinterpret_cast<element_t *>(slot_pointer),
+		    *reinterpret_cast<element_t*>(slot_pointer),
 		};
 	}
 
-	slot_ref_t slot_ref(std::size_t slot_index) const noexcept {
-		return slot_ref(data_, slot_index);
-	}
+	slot_ref_t slot_ref(std::size_t slot_index) const noexcept { return slot_ref(data_, slot_index); }
 
-	bool populate_slot(slot_ref_t slot, element_t const &new_element) {
+	bool populate_slot(slot_ref_t slot, element_t const& new_element) {
 		if (slot.header.populated & slot.mask) {
 			slot.element = new_element;
 			slot.header.deleted &= ~slot.mask;
@@ -2009,20 +1752,13 @@ private:
 	}
 
 public:
-	std::size_t size() const noexcept {
-		return populated_slots_;
-	}
-	std::size_t capacity() const noexcept {
-		return capacity_slots_;
-	}
+	std::size_t size() const noexcept { return populated_slots_; }
+	std::size_t capacity() const noexcept { return capacity_slots_; }
 
-	flat_hash_multi_set_gt() noexcept {
-	}
-	~flat_hash_multi_set_gt() noexcept {
-		reset();
-	}
+	flat_hash_multi_set_gt() noexcept {}
+	~flat_hash_multi_set_gt() noexcept { reset(); }
 
-	flat_hash_multi_set_gt(flat_hash_multi_set_gt const &other) {
+	flat_hash_multi_set_gt(flat_hash_multi_set_gt const& other) {
 
 		// On Windows allocating a zero-size array would fail
 		if (!other.buckets_) {
@@ -2031,7 +1767,7 @@ public:
 		}
 
 		// Allocate new memory
-		data_ = (char *)allocator_t {}.allocate(other.buckets_ * bytes_per_bucket());
+		data_ = (char*)allocator_t{}.allocate(other.buckets_ * bytes_per_bucket());
 		if (!data_)
 			throw std::bad_alloc();
 
@@ -2053,7 +1789,7 @@ public:
 		}
 	}
 
-	flat_hash_multi_set_gt &operator=(flat_hash_multi_set_gt const &other) {
+	flat_hash_multi_set_gt& operator=(flat_hash_multi_set_gt const& other) {
 
 		// On Windows allocating a zero-size array would fail
 		if (!other.buckets_) {
@@ -2068,10 +1804,10 @@ public:
 		// Clear existing data
 		clear();
 		if (data_)
-			allocator_t {}.deallocate(data_, buckets_ * bytes_per_bucket());
+			allocator_t{}.deallocate(data_, buckets_ * bytes_per_bucket());
 
 		// Allocate new memory
-		data_ = (char *)allocator_t {}.allocate(other.buckets_ * bytes_per_bucket());
+		data_ = (char*)allocator_t{}.allocate(other.buckets_ * bytes_per_bucket());
 		if (!data_)
 			throw std::bad_alloc();
 
@@ -2104,14 +1840,15 @@ public:
 		}
 
 		// Reset populated slots count
-		std::memset(data_, 0, buckets_ * bytes_per_bucket());
+		if (data_)
+			std::memset(data_, 0, buckets_ * bytes_per_bucket());
 		populated_slots_ = 0;
 	}
 
 	void reset() noexcept {
 		clear(); // Clear all elements
 		if (data_)
-			allocator_t {}.deallocate(data_, buckets_ * bytes_per_bucket());
+			allocator_t{}.deallocate(data_, buckets_ * bytes_per_bucket());
 		buckets_ = 0;
 		populated_slots_ = 0;
 		capacity_slots_ = 0;
@@ -2128,7 +1865,7 @@ public:
 		std::size_t new_bytes = new_buckets * bytes_per_bucket();
 
 		// Allocate new memory
-		char *new_data = (char *)allocator_t {}.allocate(new_bytes);
+		char* new_data = (char*)allocator_t{}.allocate(new_bytes);
 		if (!new_data)
 			return false;
 
@@ -2160,7 +1897,7 @@ public:
 
 		// Deallocate old data and update pointers and sizes
 		if (data_)
-			allocator_t {}.deallocate(data_, buckets_ * bytes_per_bucket());
+			allocator_t{}.deallocate(data_, buckets_ * bytes_per_bucket());
 		data_ = new_data;
 		buckets_ = new_buckets;
 		capacity_slots_ = new_slots;
@@ -2168,22 +1905,20 @@ public:
 		return true;
 	}
 
-	template <typename query_at>
-	class equal_iterator_gt {
+	template <typename query_at> class equal_iterator_gt {
 	public:
 		using iterator_category = std::forward_iterator_tag;
 		using value_type = element_t;
 		using difference_type = std::ptrdiff_t;
-		using pointer = element_t *;
-		using reference = element_t &;
+		using pointer = element_t*;
+		using reference = element_t&;
 
-		equal_iterator_gt(std::size_t index, flat_hash_multi_set_gt *parent, query_at const &query,
-		                  equals_t const &equals)
-		    : index_(index), parent_(parent), query_(query), equals_(equals) {
-		}
+		equal_iterator_gt(std::size_t index, flat_hash_multi_set_gt* parent, query_at const& query,
+		                  equals_t const& equals)
+		    : index_(index), parent_(parent), query_(query), equals_(equals) {}
 
 		// Pre-increment
-		equal_iterator_gt &operator++() {
+		equal_iterator_gt& operator++() {
 			do {
 				index_ = (index_ + 1) & (parent_->capacity_slots_ - 1);
 			} while (!equals_(parent_->slot_ref(index_).element, query_) &&
@@ -2197,38 +1932,32 @@ public:
 			return temp;
 		}
 
-		reference operator*() {
-			return parent_->slot_ref(index_).element;
-		}
-		pointer operator->() {
-			return &parent_->slot_ref(index_).element;
-		}
-		bool operator!=(equal_iterator_gt const &other) const {
-			return !(*this == other);
-		}
-		bool operator==(equal_iterator_gt const &other) const {
+		reference operator*() { return parent_->slot_ref(index_).element; }
+		pointer operator->() { return &parent_->slot_ref(index_).element; }
+		bool operator!=(equal_iterator_gt const& other) const { return !(*this == other); }
+		bool operator==(equal_iterator_gt const& other) const {
 			return index_ == other.index_ && parent_ == other.parent_;
 		}
 
 	private:
 		std::size_t index_;
-		flat_hash_multi_set_gt *parent_;
+		flat_hash_multi_set_gt* parent_;
 		query_at query_;  // Store the query object
 		equals_t equals_; // Store the equals functor
 	};
 
 	/**
-	 *  @brief  Returns an iterator range of all elements matching the given query.
-	 *
-	 *  Technically, the second iterator points to the first empty slot after a
-	 *  range of equal values and non-equal values with similar hashes.
+     *  @brief  Returns an iterator range of all elements matching the given query.
+     *
+     *  Technically, the second iterator points to the first empty slot after a
+     *  range of equal values and non-equal values with similar hashes.
 	 */
 	template <typename query_at>
 	std::pair<equal_iterator_gt<query_at>, equal_iterator_gt<query_at>>
-	equal_range(query_at const &query) const noexcept {
+	equal_range(query_at const& query) const noexcept {
 
 		equals_t equals;
-		auto this_ptr = const_cast<flat_hash_multi_set_gt *>(this);
+		auto this_ptr = const_cast<flat_hash_multi_set_gt*>(this);
 		auto end = equal_iterator_gt<query_at>(capacity_slots_, this_ptr, query, equals);
 		if (!capacity_slots_)
 			return {end, end};
@@ -2272,8 +2001,7 @@ public:
 		        equal_iterator_gt<query_at>(first_empty_index, this_ptr, query, equals)};
 	}
 
-	template <typename similar_at>
-	bool pop_first(similar_at &&query, element_t &popped_value) noexcept {
+	template <typename similar_at> bool pop_first(similar_at&& query, element_t& popped_value) noexcept {
 
 		if (!capacity_slots_)
 			return false;
@@ -2307,8 +2035,7 @@ public:
 		return false; // No match found
 	}
 
-	template <typename similar_at>
-	std::size_t erase(similar_at &&query) noexcept {
+	template <typename similar_at> std::size_t erase(similar_at&& query) noexcept {
 
 		if (!capacity_slots_)
 			return 0;
@@ -2342,8 +2069,7 @@ public:
 		return count; // Return the number of elements removed
 	}
 
-	template <typename similar_at>
-	element_t const *find(similar_at &&query) const noexcept {
+	template <typename similar_at> element_t const* find(similar_at&& query) const noexcept {
 
 		if (!capacity_slots_)
 			return nullptr;
@@ -2372,15 +2098,12 @@ public:
 		return nullptr; // No match found
 	}
 
-	element_t const *end() const noexcept {
-		return nullptr;
-	}
+	element_t const* end() const noexcept { return nullptr; }
 
-	template <typename func_at>
-	void for_each(func_at &&func) const {
+	template <typename func_at> void for_each(func_at&& func) const {
 		for (std::size_t bucket_index = 0; bucket_index < buckets_; ++bucket_index) {
 			auto bucket_pointer = data_ + bytes_per_bucket() * bucket_index;
-			bucket_header_t &header = *reinterpret_cast<bucket_header_t *>(bucket_pointer);
+			bucket_header_t& header = *reinterpret_cast<bucket_header_t*>(bucket_pointer);
 			std::uint64_t populated = header.populated;
 			std::uint64_t deleted = header.deleted;
 
@@ -2391,15 +2114,14 @@ public:
 				// Check if the slot is populated and not deleted
 				if ((populated & ~deleted) & mask) {
 					auto slot_pointer = bucket_pointer + sizeof(bucket_header_t) + sizeof(element_t) * in_bucket_index;
-					element_t const &element = *reinterpret_cast<element_t const *>(slot_pointer);
+					element_t const& element = *reinterpret_cast<element_t const*>(slot_pointer);
 					func(element);
 				}
 			}
 		}
 	}
 
-	template <typename similar_at>
-	std::size_t count(similar_at &&query) const noexcept {
+	template <typename similar_at> std::size_t count(similar_at&& query) const noexcept {
 
 		if (!capacity_slots_)
 			return 0;
@@ -2429,8 +2151,7 @@ public:
 		return count;
 	}
 
-	template <typename similar_at>
-	bool contains(similar_at &&query) const noexcept {
+	template <typename similar_at> bool contains(similar_at&& query) const noexcept {
 
 		if (!capacity_slots_)
 			return false;
@@ -2463,7 +2184,7 @@ public:
 			throw std::bad_alloc();
 	}
 
-	bool try_emplace(element_t const &element) noexcept {
+	bool try_emplace(element_t const& element) noexcept {
 		// Check if we need to resize
 		if (populated_slots_ * 3u >= capacity_slots_ * 2u)
 			if (!try_reserve(populated_slots_ + 1))
