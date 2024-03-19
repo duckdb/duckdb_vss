@@ -20,7 +20,7 @@ public:
 	static_assert(BLOCK_SIZE > sizeof(IndexPointer), "Block size must be larger than the size of an IndexPointer");
 
 	IndexPointer next_block;
-	char data[BLOCK_DATA_SIZE];
+	char data[BLOCK_DATA_SIZE] = {0};
 };
 
 constexpr idx_t LinkedBlock::BLOCK_DATA_SIZE;
@@ -182,7 +182,7 @@ idx_t HNSWIndex::GetVectorSize() const {
 }
 
 bool HNSWIndex::IsDistanceFunction(const string &distance_function_name) {
-	auto accepted_functions = {"array_distance", "array_cosine_distance", "array_inner_product"};
+	auto accepted_functions = {"array_distance", "array_cosine_similarity", "array_inner_product"};
 	return std::find(accepted_functions.begin(), accepted_functions.end(), distance_function_name) != accepted_functions.end();
 }
 
@@ -190,7 +190,7 @@ bool HNSWIndex::MatchesDistanceFunction(const string &distance_function_name) co
 	if(distance_function_name == "array_distance" && index.metric().metric_kind() == unum::usearch::metric_kind_t::l2sq_k) {
 		return true;
 	}
-	if(distance_function_name == "array_cosine_distance" && index.metric().metric_kind() == unum::usearch::metric_kind_t::cos_k) {
+	if(distance_function_name == "array_cosine_similarity" && index.metric().metric_kind() == unum::usearch::metric_kind_t::cos_k) {
 		return true;
 	}
 	if(distance_function_name == "array_inner_product" && index.metric().metric_kind() == unum::usearch::metric_kind_t::ip_k) {
@@ -200,16 +200,19 @@ bool HNSWIndex::MatchesDistanceFunction(const string &distance_function_name) co
 }
 
 const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIND_MAP = {
-    {"ls2sq", unum::usearch::metric_kind_t::l2sq_k},
+    {"l2sq", unum::usearch::metric_kind_t::l2sq_k},
     {"cosine", unum::usearch::metric_kind_t::cos_k},
+    {"ip", unum::usearch::metric_kind_t::ip_k},
+	/* TODO: Add the rest of these later
     {"divergence", unum::usearch::metric_kind_t::divergence_k},
     {"hamming", unum::usearch::metric_kind_t::hamming_k},
     {"jaccard", unum::usearch::metric_kind_t::jaccard_k},
     {"haversine", unum::usearch::metric_kind_t::haversine_k},
-    {"ip", unum::usearch::metric_kind_t::ip_k},
     {"pearson", unum::usearch::metric_kind_t::pearson_k},
     {"sorensen", unum::usearch::metric_kind_t::sorensen_k},
-    {"tanimoto", unum::usearch::metric_kind_t::tanimoto_k}};
+    {"tanimoto", unum::usearch::metric_kind_t::tanimoto_k}
+     */
+};
 
 const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIND_MAP = {
     {static_cast<uint8_t>(LogicalTypeId::FLOAT), unum::usearch::scalar_kind_t::f32_k},
