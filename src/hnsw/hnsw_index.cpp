@@ -262,9 +262,7 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids) {
 
 	auto vec_child_data = FlatVector::GetData<float>(vec_child_vec);
 	auto rowid_data = FlatVector::GetData<row_t>(row_ids);
-
 	// TODO: Maybe set a local state id?
-	// auto thread_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
 	for (idx_t out_idx = 0; out_idx < count; out_idx++) {
 		auto rowid = rowid_data[out_idx];
 		index.add(rowid, vec_child_data + (out_idx * array_size));

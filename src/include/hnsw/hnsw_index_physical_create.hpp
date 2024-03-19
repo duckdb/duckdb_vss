@@ -49,8 +49,7 @@ public:
 		return true;
 	}
 	bool ParallelSink() const override {
-		// TODO: Right now we don't support parallel index creation
-		return false;
+		return true;
 	}
 };
 
