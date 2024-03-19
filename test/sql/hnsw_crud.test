@@ -39,3 +39,6 @@ query I
 SELECT * FROM t1 ORDER BY array_distance(vec, [1,2,3]::FLOAT[3]) LIMIT 3;
 ----
 [5.0, 5.0, 5.0]
+
+statement ok
+PRAGMA hnsw_compact_index('my_idx');

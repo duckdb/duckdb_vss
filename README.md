@@ -60,13 +60,13 @@ The following table shows the supported distance metrics and their corresponding
 | Cosine similarity | `cosine` | `array_cosine_similarity` |
 | Inner product | `ip` | `array_inner_product` |
 
-## Inserts, Updates and Deletes
+## Inserts, Updates,  Deletes and Re-Compaction
 
-The HNSW index does support inserting, updating and deleting rows from the table. However, there are two things to keep in mind:  
+The HNSW index does support inserting, updating and deleting rows from the table after index creation. However, there are two things to keep in mind:  
 - It should be faster to create the index after the table has been populated with data as the initial bulk load can make better use of parallelism on large tables.
 - Deletes are not immediately reflected in the index, but are instead marked as deleted, which can cause the index to grow stale over time and negatively impact query quality and performance.
 
-To address this, either re-create the index after a significant number of updates or call the `VACUUM` command to trigger a re-compaction of the index.
+To address this, you can call the `PRAGMA hnsw_compact_index('<index name>')` pragma function to trigger a re-compaction of the index pruning deleted items, or re-create the index after a significant number of updates.
 
 ## Limitations 
 

@@ -292,6 +292,14 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	}
 }
 
+void HNSWIndex::Compact() {
+	// Re-compact the index
+	auto result = index.compact();
+	if(!result) {
+		throw InternalException("Failed to compact the HNSW index: %s", result.error.what());
+	}
+}
+
 void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
 	auto count = input.size();
 	rowid_vec.Flatten(count);
@@ -366,11 +374,6 @@ bool HNSWIndex::MergeIndexes(IndexLock &state, Index &other_index) {
 }
 
 void HNSWIndex::Vacuum(IndexLock &state) {
-	// Re-compact the index
-	auto result = index.compact();
-	if(!result) {
-		throw InternalException("Failed to compact the HNSW index: %s", result.error.what());
-	}
 }
 
 void HNSWIndex::CheckConstraintsForChunk(DataChunk &input, ConflictManager &conflict_manager) {
