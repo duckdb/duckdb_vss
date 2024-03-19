@@ -61,10 +61,11 @@ public:
 		auto projection_index = bound_column_ref.binding.column_index;
 
 		auto &bound_function = projection.expressions[projection_index]->Cast<BoundFunctionExpression>();
-		if (bound_function.function.name != "array_distance") {
+		if(!HNSWIndex::IsDistanceFunction(bound_function.function.name)) {
 			// We can only optimize if the order by expression is a distance function
 			return;
 		}
+
 		// Figure out the query vector
 		Value target_value;
 		if (bound_function.children[0]->GetExpressionType() == ExpressionType::VALUE_CONSTANT) {
@@ -136,6 +137,11 @@ public:
 
 				if (hnsw_index.GetVectorSize() != array_size) {
 					// The vector size of the index does not match the vector size of the query
+					return false;
+				}
+
+				if (!hnsw_index.MatchesDistanceFunction(bound_function.function.name)) {
+					// The distance function of the index does not match the distance function of the query
 					return false;
 				}
 

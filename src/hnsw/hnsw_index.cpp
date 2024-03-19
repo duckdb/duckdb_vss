@@ -181,6 +181,24 @@ idx_t HNSWIndex::GetVectorSize() const {
 	return index.dimensions();
 }
 
+bool HNSWIndex::IsDistanceFunction(const string &distance_function_name) {
+	auto accepted_functions = {"array_distance", "array_cosine_distance", "array_inner_product"};
+	return std::find(accepted_functions.begin(), accepted_functions.end(), distance_function_name) != accepted_functions.end();
+}
+
+bool HNSWIndex::MatchesDistanceFunction(const string &distance_function_name) const {
+	if(distance_function_name == "array_distance" && index.metric().metric_kind() == unum::usearch::metric_kind_t::l2sq_k) {
+		return true;
+	}
+	if(distance_function_name == "array_cosine_distance" && index.metric().metric_kind() == unum::usearch::metric_kind_t::cos_k) {
+		return true;
+	}
+	if(distance_function_name == "array_inner_product" && index.metric().metric_kind() == unum::usearch::metric_kind_t::ip_k) {
+		return true;
+	}
+	return false;
+}
+
 const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIND_MAP = {
     {"ls2sq", unum::usearch::metric_kind_t::l2sq_k},
     {"cosine", unum::usearch::metric_kind_t::cos_k},

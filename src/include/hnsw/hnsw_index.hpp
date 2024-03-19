@@ -35,12 +35,15 @@ public:
 	idx_t Scan(IndexScanState &state, Vector &result);
 
 	idx_t GetVectorSize() const;
+	static bool IsDistanceFunction(const string &distance_function_name);
+	bool MatchesDistanceFunction(const string &distance_function_name) const;
 
 	void Construct(DataChunk &input, Vector &row_ids);
 	void PersistToDisk();
 
 	static const case_insensitive_map_t<unum::usearch::metric_kind_t> METRIC_KIND_MAP;
 	static const unordered_map<uint8_t, unum::usearch::scalar_kind_t> SCALAR_KIND_MAP;
+
 
 public:
 	//! Called when data is appended to the index. The lock obtained from InitializeLock must be held
