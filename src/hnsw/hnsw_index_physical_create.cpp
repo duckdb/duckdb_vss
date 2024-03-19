@@ -34,6 +34,7 @@ class CreateHNSWIndexGlobalState : public GlobalSinkState {
 public:
 	//! Global index to be added to the table
 	unique_ptr<Index> global_index;
+	atomic<idx_t> next_thread_id = {0};
 };
 
 unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientContext &context) const {
@@ -54,11 +55,13 @@ unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientCo
 //-------------------------------------------------------------
 // Local State
 //-------------------------------------------------------------
-class CreateHNSWIndexLocalState : public LocalSinkState {};
+class CreateHNSWIndexLocalState : public LocalSinkState {
+public:
+	idx_t thread_id = idx_t(-1);
+};
 
 unique_ptr<LocalSinkState> PhysicalCreateHNSWIndex::GetLocalSinkState(ExecutionContext &context) const {
 	auto state = make_uniq<CreateHNSWIndexLocalState>();
-
 	return std::move(state);
 }
 
@@ -69,7 +72,12 @@ unique_ptr<LocalSinkState> PhysicalCreateHNSWIndex::GetLocalSinkState(ExecutionC
 SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChunk &chunk,
                                              OperatorSinkInput &input) const {
 	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
+	auto &lstate = input.local_state.Cast<CreateHNSWIndexLocalState>();
 	auto &index = gstate.global_index->Cast<HNSWIndex>();
+
+	if(lstate.thread_id == idx_t(-1)) {
+		lstate.thread_id = gstate.next_thread_id++;
+	}
 
 	if (chunk.ColumnCount() != 2) {
 		throw NotImplementedException("Custom index creation only supported for single-column indexes");
@@ -78,7 +86,7 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 	auto &row_identifiers = chunk.data[1];
 
 	// Construct the index
-	index.Construct(chunk, row_identifiers);
+	index.Construct(chunk, row_identifiers, lstate.thread_id);
 
 	return SinkResultType::NEED_MORE_INPUT;
 }

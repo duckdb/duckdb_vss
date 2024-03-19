@@ -38,7 +38,7 @@ public:
 	static bool IsDistanceFunction(const string &distance_function_name);
 	bool MatchesDistanceFunction(const string &distance_function_name) const;
 
-	void Construct(DataChunk &input, Vector &row_ids);
+	void Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx);
 	void PersistToDisk();
 
 	static const case_insensitive_map_t<unum::usearch::metric_kind_t> METRIC_KIND_MAP;
