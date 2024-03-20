@@ -11,6 +11,8 @@
 
 namespace duckdb {
 
+class StorageLock;
+
 class HNSWIndex : public Index {
 public:
 	// The type name of the HNSWIndex
@@ -31,7 +33,7 @@ public:
 	//! The allocator used to persist linked blocks
 	unique_ptr<FixedSizeAllocator> linked_block_allocator;
 
-	unique_ptr<IndexScanState> InitializeScan(float *query_vector, idx_t limit) const;
+	unique_ptr<IndexScanState> InitializeScan(float *query_vector, idx_t limit);
 	idx_t Scan(IndexScanState &state, Vector &result);
 
 	idx_t GetVectorSize() const;
@@ -80,6 +82,8 @@ public:
 	                                     DataChunk &input) override {
 		return "Constraint violation in HNSW index";
 	}
+private:
+	StorageLock rwlock;
 };
 
 } // namespace duckdb

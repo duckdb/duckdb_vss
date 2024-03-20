@@ -233,8 +233,12 @@ struct HNSWIndexScanState : public IndexScanState {
 	unique_array<row_t> row_ids;
 };
 
-unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t limit) const {
+unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t limit) {
 	auto state = make_uniq<HNSWIndexScanState>();
+
+	// Acquire a shared lock to search the index
+	auto lock = rwlock.GetSharedLock();
+
 	auto search_result = index.search(query_vector, limit);
 
 	state->current_row = 0;
@@ -261,6 +265,9 @@ idx_t HNSWIndex::Scan(IndexScanState &state, Vector &result) {
 }
 
 void HNSWIndex::CommitDrop(IndexLock &index_lock) {
+	// Acquire an exclusive lock to drop the index
+	auto lock = rwlock.GetExclusiveLock();
+
 	index.reset();
 	// TODO: Maybe we can drop these much earlier?
 	linked_block_allocator->Reset();
@@ -282,22 +289,31 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	auto vec_child_data = FlatVector::GetData<float>(vec_child_vec);
 	auto rowid_data = FlatVector::GetData<row_t>(row_ids);
 
-	// Even if .add is threadsafe, it is not threadsafe in combination with .reserve
-	// E.g. we need to have enough capacity up front before we can parallelize. If we reserve while adding it will crash.
-	// So we need to lock here.
-	// An idea: Buffer everything into a ColumnDataCollection and then add it all at in parallel in the end once we have reserved enough space.
-	static mutex hnsw_index_mutex;
-	lock_guard<mutex> lock(hnsw_index_mutex);
-
-	if(!index.reserve(NextPowerOfTwo(index.size() + count))) {
-		throw InternalException("Failed to reserve space in the HNSW index");
+	bool need_to_resize = false;
+	// Check if we need to resize the index
+	{
+		auto lock = rwlock.GetSharedLock();
+		need_to_resize = index.capacity() < index.size() + count;
 	}
 
-	for (idx_t out_idx = 0; out_idx < count; out_idx++) {
-		auto rowid = rowid_data[out_idx];
-		auto result = index.add(rowid, vec_child_data + (out_idx * array_size), thread_idx);
-		if(!result) {
-			throw InternalException("Failed to add to the HNSW index: %s", result.error.what());
+	if(need_to_resize) {
+		// Acquire an exclusive lock to resize the index
+		auto lock = rwlock.GetExclusiveLock();
+		// Check if we still need to resize
+		if (index.capacity() < index.size() + count) {
+			index.reserve(NextPowerOfTwo(index.size() + count));
+		}
+	}
+
+	// For inserting into the index, we just need a shared lock
+	{
+		auto lock = rwlock.GetSharedLock();
+		for (idx_t out_idx = 0; out_idx < count; out_idx++) {
+			auto rowid = rowid_data[out_idx];
+			auto result = index.add(rowid, vec_child_data + (out_idx * array_size), thread_idx);
+			if (!result) {
+				throw InternalException("Failed to add to the HNSW index: %s", result.error.what());
+			}
 		}
 	}
 }
@@ -314,6 +330,10 @@ void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
 	auto count = input.size();
 	rowid_vec.Flatten(count);
 	auto row_id_data = FlatVector::GetData<row_t>(rowid_vec);
+
+	// For deleting from the index, we need an exclusive lock
+	auto _lock = rwlock.GetExclusiveLock();
+
 	for(idx_t i = 0; i < input.size(); i++) {
 		auto result = index.remove(row_id_data[i]);
 	}
@@ -338,6 +358,9 @@ void HNSWIndex::VerifyAppend(DataChunk &chunk, ConflictManager &conflict_manager
 }
 
 void HNSWIndex::PersistToDisk() {
+	// Acquire an exclusive lock to persist the index
+	auto lock = rwlock.GetExclusiveLock();
+
 	// Write
 
 	if (root_block_ptr.Get() == 0) {
