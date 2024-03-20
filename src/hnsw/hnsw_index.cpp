@@ -228,9 +228,9 @@ const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIN
 
 // Scan State
 struct HNSWIndexScanState : public IndexScanState {
-	idx_t current_row;
-	idx_t total_rows;
-	unique_array<row_t> row_ids;
+	idx_t current_row = 0;
+	idx_t total_rows = 0;
+	unique_array<row_t> row_ids = nullptr;
 };
 
 unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t limit) {
@@ -238,7 +238,6 @@ unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t 
 
 	// Acquire a shared lock to search the index
 	auto lock = rwlock.GetSharedLock();
-
 	auto search_result = index.search(query_vector, limit);
 
 	state->current_row = 0;
