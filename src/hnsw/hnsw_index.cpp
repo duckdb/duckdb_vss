@@ -14,7 +14,6 @@ namespace duckdb {
 
 class LinkedBlock {
 public:
-	// TODO: More testing with small block sizes. 64 works though.
 	static constexpr const idx_t BLOCK_SIZE = Storage::BLOCK_SIZE - sizeof(validity_t);
 	static constexpr const idx_t BLOCK_DATA_SIZE = BLOCK_SIZE - sizeof(IndexPointer);
 	static_assert(BLOCK_SIZE > sizeof(IndexPointer), "Block size must be larger than the size of an IndexPointer");
@@ -181,6 +180,19 @@ idx_t HNSWIndex::GetVectorSize() const {
 	return index.dimensions();
 }
 
+string HNSWIndex::GetMetric() const {
+	switch (index.metric().metric_kind()) {
+	case unum::usearch::metric_kind_t::l2sq_k:
+		return "l2sq";
+	case unum::usearch::metric_kind_t::cos_k:
+		return "cosine";
+	case unum::usearch::metric_kind_t::ip_k:
+		return "ip";
+	default:
+		throw InternalException("Unknown metric kind");
+	}
+}
+
 bool HNSWIndex::IsDistanceFunction(const string &distance_function_name) {
 	auto accepted_functions = {"array_distance", "array_cosine_similarity", "array_inner_product"};
 	return std::find(accepted_functions.begin(), accepted_functions.end(), distance_function_name) != accepted_functions.end();
@@ -225,6 +237,23 @@ const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIN
     {static_cast<uint8_t>(LogicalTypeId::USMALLINT), unum::usearch::scalar_kind_t::u16_k},
     {static_cast<uint8_t>(LogicalTypeId::UINTEGER), unum::usearch::scalar_kind_t::u32_k},
     {static_cast<uint8_t>(LogicalTypeId::UBIGINT), unum::usearch::scalar_kind_t::u64_k}};
+
+
+unique_ptr<HNSWIndexStats> HNSWIndex::GetStats() {
+	auto lock = rwlock.GetExclusiveLock();
+	auto result = make_uniq<HNSWIndexStats>();
+
+	result->max_level = index.max_level();
+	result->count = index.size();
+	result->capacity = index.capacity();
+	result->approx_size = index.memory_usage();
+
+	for(idx_t i = 0; i < index.max_level(); i++) {
+		result->level_stats.push_back(index.stats(i));
+	}
+
+	return result;
+}
 
 // Scan State
 struct HNSWIndexScanState : public IndexScanState {
@@ -278,6 +307,9 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	D_ASSERT(row_ids.GetType().InternalType() == ROW_TYPE);
 	D_ASSERT(logical_types[0] == input.data[0].GetType());
 
+	// Mark this index as dirty so we checkpoint it properly
+	is_dirty = true;
+
 	auto count = input.size();
 	input.Flatten();
 
@@ -318,6 +350,11 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 }
 
 void HNSWIndex::Compact() {
+	// Mark this index as dirty so we checkpoint it properly
+	is_dirty = true;
+
+	// Acquire an exclusive lock to compact the index
+	auto lock = rwlock.GetExclusiveLock();
 	// Re-compact the index
 	auto result = index.compact();
 	if(!result) {
@@ -326,6 +363,9 @@ void HNSWIndex::Compact() {
 }
 
 void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
+	// Mark this index as dirty so we checkpoint it properly
+	is_dirty = true;
+
 	auto count = input.size();
 	rowid_vec.Flatten(count);
 	auto row_id_data = FlatVector::GetData<row_t>(rowid_vec);
@@ -360,6 +400,11 @@ void HNSWIndex::PersistToDisk() {
 	// Acquire an exclusive lock to persist the index
 	auto lock = rwlock.GetExclusiveLock();
 
+	// If there haven't been any changes, we don't need to rewrite the index again
+	if(!is_dirty) {
+		return;
+	}
+
 	// Write
 
 	if (root_block_ptr.Get() == 0) {
@@ -372,6 +417,8 @@ void HNSWIndex::PersistToDisk() {
 		writer.WriteData(static_cast<const_data_ptr_t>(data), size);
 		return true;
 	});
+
+	is_dirty = false;
 }
 
 IndexStorageInfo HNSWIndex::GetStorageInfo(const bool get_buffers) {

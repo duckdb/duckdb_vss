@@ -13,6 +13,14 @@ namespace duckdb {
 
 class StorageLock;
 
+struct HNSWIndexStats {
+	idx_t max_level;
+	idx_t count;
+	idx_t capacity;
+	idx_t approx_size;
+	vector<unum::usearch::index_dense_t::stats_t> level_stats;
+};
+
 class HNSWIndex : public Index {
 public:
 	// The type name of the HNSWIndex
@@ -39,10 +47,13 @@ public:
 	idx_t GetVectorSize() const;
 	static bool IsDistanceFunction(const string &distance_function_name);
 	bool MatchesDistanceFunction(const string &distance_function_name) const;
+	string GetMetric() const;
 
 	void Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx);
 	void PersistToDisk();
 	void Compact();
+
+	unique_ptr<HNSWIndexStats> GetStats();
 
 	static const case_insensitive_map_t<unum::usearch::metric_kind_t> METRIC_KIND_MAP;
 	static const unordered_map<uint8_t, unum::usearch::scalar_kind_t> SCALAR_KIND_MAP;
@@ -83,6 +94,7 @@ public:
 		return "Constraint violation in HNSW index";
 	}
 private:
+	bool is_dirty = false;
 	StorageLock rwlock;
 };
 

@@ -149,50 +149,10 @@ TableFunction HNSWIndexScanFunction::GetFunction() {
 }
 
 //-------------------------------------------------------------------------
-// Compact PRAGMA
-//-------------------------------------------------------------------------
-
-static void CompactIndexPragma(ClientContext &context, const FunctionParameters &parameters) {
-	if(parameters.values.size() != 1) {
-		throw BinderException("Expected one argument for hnsw_compact_index");
-	}
-	auto &param = parameters.values[0];
-	if(param.type() != LogicalType::VARCHAR) {
-		throw BinderException("Expected a string argument for hnsw_compact_index");
-	}
-	auto index_name = param.GetValue<string>();
-
-
-	auto qname = QualifiedName::Parse(index_name);
-
-	// look up the index name in the catalog
-	Binder::BindSchemaOrCatalog(context, qname.catalog, qname.schema);
-	auto &index_entry = Catalog::GetEntry(context, CatalogType::INDEX_ENTRY, qname.catalog, qname.schema, qname.name).Cast<IndexCatalogEntry>();
-	auto &table_entry = Catalog::GetEntry(context, CatalogType::TABLE_ENTRY, qname.catalog, index_entry.GetSchemaName(), index_entry.GetTableName()).Cast<TableCatalogEntry>();
-
-	auto &storage =  table_entry.GetStorage();
-	bool found_index = false;
-	storage.info->indexes.Scan([&](Index &index_entry) {
-		if(index_entry.name == index_name) {
-			auto &hnsw_index = index_entry.Cast<HNSWIndex>();
-			hnsw_index.Compact();
-			found_index = true;
-			return true;
-		}
-		return false;
-	});
-
-	if(!found_index) {
-		throw BinderException("Index %s not found", index_name);
-	}
-}
-
-//-------------------------------------------------------------------------
 // Register
 //-------------------------------------------------------------------------
 void HNSWModule::RegisterIndexScan(DatabaseInstance &db) {
 	ExtensionUtil::RegisterFunction(db, HNSWIndexScanFunction::GetFunction());
-	ExtensionUtil::RegisterFunction(db, PragmaFunction::PragmaCall("hnsw_compact_index", CompactIndexPragma, {LogicalType::VARCHAR}));
 }
 
 } // namespace duckdb
