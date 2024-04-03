@@ -96,6 +96,7 @@ public:
 private:
 	bool is_dirty = false;
 	StorageLock rwlock;
+	atomic<idx_t> index_size = {0};
 };
 
 } // namespace duckdb

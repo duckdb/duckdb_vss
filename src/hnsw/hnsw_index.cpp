@@ -161,6 +161,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 	unum::usearch::metric_punned_t metric(vector_size, metric_kind, scalar_kind);
 	index = unum::usearch::index_dense_t::make(metric);
 
+	auto lock = rwlock.GetExclusiveLock();
 	// Is this a new index or an existing index?
 	if (info.IsValid()) {
 		root_block_ptr.Set(info.root);
@@ -172,8 +173,9 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		index.load_from_stream(
 		    [&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
 	} else {
-		index.reserve(0);
+		index.reserve(32);
 	}
+	index_size = index.size();
 }
 
 idx_t HNSWIndex::GetVectorSize() const {
@@ -297,6 +299,7 @@ void HNSWIndex::CommitDrop(IndexLock &index_lock) {
 	auto lock = rwlock.GetExclusiveLock();
 
 	index.reset();
+	index_size = 0;
 	// TODO: Maybe we can drop these much earlier?
 	linked_block_allocator->Reset();
 	root_block_ptr.Clear();
@@ -320,24 +323,31 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	auto vec_child_data = FlatVector::GetData<float>(vec_child_vec);
 	auto rowid_data = FlatVector::GetData<row_t>(row_ids);
 
-	bool need_to_resize = false;
 	// Check if we need to resize the index
+	// We keep the size of the index in a separate atomic to avoid
+	// locking exclusively when checking
+	bool needs_resize = false;
 	{
 		auto lock = rwlock.GetSharedLock();
-		need_to_resize = index.capacity() < index.size() + count;
-	}
-
-	if(need_to_resize) {
-		// Acquire an exclusive lock to resize the index
-		auto lock = rwlock.GetExclusiveLock();
-		// Check if we still need to resize
-		if (index.capacity() < index.size() + count) {
-			index.reserve(NextPowerOfTwo(index.size() + count));
+		if(index_size.fetch_add(count) + count > index.capacity()) {
+			needs_resize = true;
 		}
 	}
 
-	// For inserting into the index, we just need a shared lock
+	// We need to "upgrade" the lock to exclusive to resize the index
+	if(needs_resize) {
+		auto lock = rwlock.GetExclusiveLock();
+		// Do we still need to resize?
+		// Another thread might have resized it already
+		auto size = index_size.load();
+		if(size > index.capacity()) {
+			// Add some extra space so that we don't need to resize too often
+			index.reserve(NextPowerOfTwo(size));
+		}
+	}
+
 	{
+		// Now we can be sure that we have enough space in the index
 		auto lock = rwlock.GetSharedLock();
 		for (idx_t out_idx = 0; out_idx < count; out_idx++) {
 			auto rowid = rowid_data[out_idx];
@@ -360,6 +370,8 @@ void HNSWIndex::Compact() {
 	if(!result) {
 		throw InternalException("Failed to compact the HNSW index: %s", result.error.what());
 	}
+
+	index_size = index.size();
 }
 
 void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
@@ -376,6 +388,8 @@ void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
 	for(idx_t i = 0; i < input.size(); i++) {
 		auto result = index.remove(row_id_data[i]);
 	}
+
+	index_size = index.size();
 }
 
 ErrorData HNSWIndex::Insert(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
