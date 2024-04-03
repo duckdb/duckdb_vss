@@ -75,15 +75,13 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 	auto &lstate = input.local_state.Cast<CreateHNSWIndexLocalState>();
 	auto &index = gstate.global_index->Cast<HNSWIndex>();
 
-	if(lstate.thread_id == idx_t(-1)) {
+	if (lstate.thread_id == idx_t(-1)) {
 		lstate.thread_id = gstate.next_thread_id++;
 	}
 
 	if (chunk.ColumnCount() != 2) {
 		throw NotImplementedException("Custom index creation only supported for single-column indexes");
 	}
-
-
 
 	auto &row_identifiers = chunk.data[1];
 

@@ -197,17 +197,21 @@ string HNSWIndex::GetMetric() const {
 
 bool HNSWIndex::IsDistanceFunction(const string &distance_function_name) {
 	auto accepted_functions = {"array_distance", "array_cosine_similarity", "array_inner_product"};
-	return std::find(accepted_functions.begin(), accepted_functions.end(), distance_function_name) != accepted_functions.end();
+	return std::find(accepted_functions.begin(), accepted_functions.end(), distance_function_name) !=
+	       accepted_functions.end();
 }
 
 bool HNSWIndex::MatchesDistanceFunction(const string &distance_function_name) const {
-	if(distance_function_name == "array_distance" && index.metric().metric_kind() == unum::usearch::metric_kind_t::l2sq_k) {
+	if (distance_function_name == "array_distance" &&
+	    index.metric().metric_kind() == unum::usearch::metric_kind_t::l2sq_k) {
 		return true;
 	}
-	if(distance_function_name == "array_cosine_similarity" && index.metric().metric_kind() == unum::usearch::metric_kind_t::cos_k) {
+	if (distance_function_name == "array_cosine_similarity" &&
+	    index.metric().metric_kind() == unum::usearch::metric_kind_t::cos_k) {
 		return true;
 	}
-	if(distance_function_name == "array_inner_product" && index.metric().metric_kind() == unum::usearch::metric_kind_t::ip_k) {
+	if (distance_function_name == "array_inner_product" &&
+	    index.metric().metric_kind() == unum::usearch::metric_kind_t::ip_k) {
 		return true;
 	}
 	return false;
@@ -217,7 +221,7 @@ const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIN
     {"l2sq", unum::usearch::metric_kind_t::l2sq_k},
     {"cosine", unum::usearch::metric_kind_t::cos_k},
     {"ip", unum::usearch::metric_kind_t::ip_k},
-	/* TODO: Add the rest of these later
+    /* TODO: Add the rest of these later
     {"divergence", unum::usearch::metric_kind_t::divergence_k},
     {"hamming", unum::usearch::metric_kind_t::hamming_k},
     {"jaccard", unum::usearch::metric_kind_t::jaccard_k},
@@ -240,7 +244,6 @@ const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIN
     {static_cast<uint8_t>(LogicalTypeId::UINTEGER), unum::usearch::scalar_kind_t::u32_k},
     {static_cast<uint8_t>(LogicalTypeId::UBIGINT), unum::usearch::scalar_kind_t::u64_k}};
 
-
 unique_ptr<HNSWIndexStats> HNSWIndex::GetStats() {
 	auto lock = rwlock.GetExclusiveLock();
 	auto result = make_uniq<HNSWIndexStats>();
@@ -250,7 +253,7 @@ unique_ptr<HNSWIndexStats> HNSWIndex::GetStats() {
 	result->capacity = index.capacity();
 	result->approx_size = index.memory_usage();
 
-	for(idx_t i = 0; i < index.max_level(); i++) {
+	for (idx_t i = 0; i < index.max_level(); i++) {
 		result->level_stats.push_back(index.stats(i));
 	}
 
@@ -305,7 +308,6 @@ void HNSWIndex::CommitDrop(IndexLock &index_lock) {
 	root_block_ptr.Clear();
 }
 
-
 void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	D_ASSERT(row_ids.GetType().InternalType() == ROW_TYPE);
 	D_ASSERT(logical_types[0] == input.data[0].GetType());
@@ -329,18 +331,18 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	bool needs_resize = false;
 	{
 		auto lock = rwlock.GetSharedLock();
-		if(index_size.fetch_add(count) + count > index.capacity()) {
+		if (index_size.fetch_add(count) + count > index.capacity()) {
 			needs_resize = true;
 		}
 	}
 
 	// We need to "upgrade" the lock to exclusive to resize the index
-	if(needs_resize) {
+	if (needs_resize) {
 		auto lock = rwlock.GetExclusiveLock();
 		// Do we still need to resize?
 		// Another thread might have resized it already
 		auto size = index_size.load();
-		if(size > index.capacity()) {
+		if (size > index.capacity()) {
 			// Add some extra space so that we don't need to resize too often
 			index.reserve(NextPowerOfTwo(size));
 		}
@@ -367,7 +369,7 @@ void HNSWIndex::Compact() {
 	auto lock = rwlock.GetExclusiveLock();
 	// Re-compact the index
 	auto result = index.compact();
-	if(!result) {
+	if (!result) {
 		throw InternalException("Failed to compact the HNSW index: %s", result.error.what());
 	}
 
@@ -385,7 +387,7 @@ void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
 	// For deleting from the index, we need an exclusive lock
 	auto _lock = rwlock.GetExclusiveLock();
 
-	for(idx_t i = 0; i < input.size(); i++) {
+	for (idx_t i = 0; i < input.size(); i++) {
 		auto result = index.remove(row_id_data[i]);
 	}
 
@@ -394,12 +396,12 @@ void HNSWIndex::Delete(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
 
 ErrorData HNSWIndex::Insert(IndexLock &lock, DataChunk &input, Vector &rowid_vec) {
 	Construct(input, rowid_vec, unum::usearch::index_dense_t::any_thread());
-	return ErrorData{};
+	return ErrorData {};
 }
 
 ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &entries, Vector &rowid_vec) {
 	Construct(entries, rowid_vec, unum::usearch::index_dense_t::any_thread());
-	return ErrorData{};
+	return ErrorData {};
 }
 
 void HNSWIndex::VerifyAppend(DataChunk &chunk) {
@@ -415,7 +417,7 @@ void HNSWIndex::PersistToDisk() {
 	auto lock = rwlock.GetExclusiveLock();
 
 	// If there haven't been any changes, we don't need to rewrite the index again
-	if(!is_dirty) {
+	if (!is_dirty) {
 		return;
 	}
 

@@ -58,7 +58,6 @@ public:
 	static const case_insensitive_map_t<unum::usearch::metric_kind_t> METRIC_KIND_MAP;
 	static const unordered_map<uint8_t, unum::usearch::scalar_kind_t> SCALAR_KIND_MAP;
 
-
 public:
 	//! Called when data is appended to the index. The lock obtained from InitializeLock must be held
 	ErrorData Append(IndexLock &lock, DataChunk &entries, Vector &row_identifiers) override;
@@ -93,6 +92,7 @@ public:
 	                                     DataChunk &input) override {
 		return "Constraint violation in HNSW index";
 	}
+
 private:
 	bool is_dirty = false;
 	StorageLock rwlock;

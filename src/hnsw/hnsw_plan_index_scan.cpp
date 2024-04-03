@@ -61,7 +61,7 @@ public:
 		auto projection_index = bound_column_ref.binding.column_index;
 
 		auto &bound_function = projection.expressions[projection_index]->Cast<BoundFunctionExpression>();
-		if(!HNSWIndex::IsDistanceFunction(bound_function.function.name)) {
+		if (!HNSWIndex::IsDistanceFunction(bound_function.function.name)) {
 			// We can only optimize if the order by expression is a distance function
 			return;
 		}
