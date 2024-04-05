@@ -30,7 +30,7 @@ public:
 	HNSWIndex(const string &name, IndexConstraintType index_constraint_type, const vector<column_t> &column_ids,
 	          TableIOManager &table_io_manager, const vector<unique_ptr<Expression>> &unbound_expressions,
 	          AttachedDatabase &db, const case_insensitive_map_t<Value> &options,
-	          const IndexStorageInfo &info = IndexStorageInfo());
+	          const IndexStorageInfo &info = IndexStorageInfo(), idx_t estimated_cardinality = 0);
 
 	//! The actual usearch index
 	unum::usearch::index_dense_t index;

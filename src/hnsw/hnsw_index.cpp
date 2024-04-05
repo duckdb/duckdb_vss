@@ -120,7 +120,8 @@ public:
 // Constructor
 HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_type, const vector<column_t> &column_ids,
                      TableIOManager &table_io_manager, const vector<unique_ptr<Expression>> &unbound_expressions,
-                     AttachedDatabase &db, const case_insensitive_map_t<Value> &options, const IndexStorageInfo &info)
+                     AttachedDatabase &db, const case_insensitive_map_t<Value> &options, const IndexStorageInfo &info,
+                     idx_t estimated_cardinality)
     : Index(name, TYPE_NAME, index_constraint_type, column_ids, table_io_manager, unbound_expressions, db) {
 
 	if (index_constraint_type != IndexConstraintType::NONE) {
@@ -173,7 +174,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		index.load_from_stream(
 		    [&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
 	} else {
-		index.reserve(32);
+		index.reserve(MinValue(static_cast<idx_t>(32), estimated_cardinality));
 	}
 	index_size = index.size();
 }
