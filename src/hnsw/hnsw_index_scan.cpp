@@ -104,7 +104,7 @@ static unique_ptr<BaseStatistics> HNSWIndexScanStatistics(ClientContext &context
 //-------------------------------------------------------------------------
 // Dependency
 //-------------------------------------------------------------------------
-void HNSWIndexScanDependency(DependencyList &entries, const FunctionData *bind_data_p) {
+void HNSWIndexScanDependency(LogicalDependencyList &entries, const FunctionData *bind_data_p) {
 	auto &bind_data = bind_data_p->Cast<HNSWIndexScanBindData>();
 	entries.AddDependency(bind_data.table);
 
