@@ -1,0 +1,50 @@
+require vss
+
+statement ok
+CREATE TABLE embeddings (id INT, vec FLOAT[3]);
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (ef_construction = 'foo');
+----
+Binder Error: HNSW index 'ef_construction' must be an integer
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (ef_construction = 0);
+----
+Binder Error: HNSW index 'ef_construction' must be at least 1
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (ef_search = 'foo');
+----
+Binder Error: HNSW index 'ef_search' must be an integer
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (ef_search = 0);
+----
+Binder Error: HNSW index 'ef_search' must be at least 1
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (M = 'foo');
+----
+Binder Error: HNSW index 'M' must be an integer
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (M = 0);
+----
+Binder Error: HNSW index 'M' must be at least 2
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (M0 = 'foo');
+----
+Binder Error: HNSW index 'M0' must be an integer
+
+statement error
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (M0 = 0);
+----
+Binder Error: HNSW index 'M0' must be at least 2
+
+# All parameters are in range
+statement ok
+CREATE INDEX idx ON embeddings USING HNSW (vec) WITH (ef_construction = 100, ef_search = 100, M = 3, M0 = 3);
+
+

@@ -160,19 +160,50 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 
 	// Create the usearch index
 	unum::usearch::metric_punned_t metric(vector_size, metric_kind, scalar_kind);
-	index = unum::usearch::index_dense_t::make(metric);
+	unum::usearch::index_dense_config_t config = {};
+
+	// We dont need to do key lookups (id -> vector) in the index, DuckDB stores the vectors separately
+	config.enable_key_lookups = false;
+
+	auto ef_construction_opt = options.find("ef_construction");
+	if (ef_construction_opt != options.end()) {
+		config.expansion_add = ef_construction_opt->second.GetValue<int32_t>();
+	}
+
+	auto ef_search_opt = options.find("ef_search");
+	if (ef_search_opt != options.end()) {
+		config.expansion_search = ef_search_opt->second.GetValue<int32_t>();
+	}
+
+	auto m_opt = options.find("m");
+	if (m_opt != options.end()) {
+		config.connectivity = m_opt->second.GetValue<int32_t>();
+		config.connectivity_base = config.connectivity * 2;
+	}
+
+	auto m0_opt = options.find("m0");
+	if (m0_opt != options.end()) {
+		config.connectivity_base = m0_opt->second.GetValue<int32_t>();
+	}
+
+	index = unum::usearch::index_dense_t::make(metric, config);
 
 	auto lock = rwlock.GetExclusiveLock();
 	// Is this a new index or an existing index?
 	if (info.IsValid()) {
+		// This is an old index that needs to be loaded
+
+		// Set the root node
 		root_block_ptr.Set(info.root);
 		D_ASSERT(info.allocator_infos.size() == 1);
 		linked_block_allocator->Init(info.allocator_infos[0]);
 
-		// This is an old index that needs to be loaded
-		LinkedBlockReader reader(*linked_block_allocator, root_block_ptr);
-		index.load_from_stream(
-		    [&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
+		// Is there anything to deserialize? We could have an empty index
+		if(!info.allocator_infos[0].buffer_ids.empty()) {
+			LinkedBlockReader reader(*linked_block_allocator, root_block_ptr);
+			index.load_from_stream(
+			    [&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
+		}
 	} else {
 		index.reserve(MinValue(static_cast<idx_t>(32), estimated_cardinality));
 	}

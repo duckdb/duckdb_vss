@@ -1,0 +1,62 @@
+require vss
+
+# Step 0: Open a database
+load __TEST_DIR__/hnsw_insert.db
+
+statement ok
+CREATE TABLE t1 (vec FLOAT[3]);
+
+# Step 1: Create a new indexl
+statement ok
+CREATE INDEX my_idx ON t1 USING HNSW (vec);
+
+query I
+SELECT count FROM pragma_hnsw_index_info();
+----
+0
+
+statement ok
+CHECKPOINT;
+
+# Step 3: Restart the database
+restart
+
+# Step 4: Insert data after restart
+statement ok
+INSERT INTO t1 VALUES (array_value(1.0, 2.0, 3.0));
+
+statement ok
+INSERT INTO t1 VALUES (array_value(4.0, 5.0, 6.0));
+
+query I
+SELECT count FROM pragma_hnsw_index_info();
+----
+2
+
+# Step 6: Restart the database
+restart
+
+# Step 7: Check that the data is still there
+query I
+SELECT count FROM pragma_hnsw_index_info();
+----
+2
+
+# Step 8: Insert more data
+statement ok
+INSERT INTO t1 VALUES (array_value(7.0, 8.0, 9.0));
+
+# Step 9: Check that the data is still there
+query I
+SELECT count FROM pragma_hnsw_index_info();
+----
+3
+
+# Step 10: Restart the database
+restart
+
+# Step 11: Check that the data is still there
+query I
+SELECT count FROM pragma_hnsw_index_info();
+----
+3

@@ -1,0 +1,32 @@
+require vss
+
+statement ok
+CREATE TABLE embeddings (id INT, vec FLOAT[3]);
+
+statement ok
+INSERT INTO embeddings SELECT 1, array_value(1,2,3);
+
+statement ok
+INSERT INTO embeddings SELECT 2, array_value(4,5,6);
+
+statement ok
+CREATE INDEX idx ON embeddings USING HNSW (vec);
+
+# Test different projections
+statement ok
+SELECT * FROM embeddings ORDER BY array_distance(vec, [1.0, 2.0, 3.0]::FLOAT[3]) LIMIT 1;
+
+statement ok
+SELECT vec, id FROM embeddings ORDER BY array_distance(vec, [1.0, 2.0, 3.0]::FLOAT[3]) LIMIT 1;
+
+statement ok
+SELECT id FROM embeddings ORDER BY array_distance(vec, [1.0, 2.0, 3.0]::FLOAT[3]) LIMIT 1;
+
+statement ok
+SELECT id, vec FROM embeddings ORDER BY array_distance(vec, [1.0, 2.0, 3.0]::FLOAT[3]) LIMIT 1;
+
+statement ok
+SELECT id, vec, array_distance(vec, [1.0, 2.0, 3.0]::FLOAT[3]) as dist FROM embeddings ORDER BY dist LIMIT 1;
+
+statement ok
+SELECT array_distance(vec, [1.0, 2.0, 3.0]::FLOAT[3]) as dist, id FROM embeddings ORDER BY dist LIMIT 1;
