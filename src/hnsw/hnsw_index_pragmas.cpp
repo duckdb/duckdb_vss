@@ -98,6 +98,7 @@ static void HNSWIndexInfoExecute(ClientContext &context, TableFunctionInput &dat
 		auto &storage = table_entry.GetStorage();
 		HNSWIndex *hnsw_index = nullptr;
 
+		storage.info->InitializeIndexes(context);
 		storage.info->indexes.Scan([&](Index &index) {
 			if (index.name == index_entry.name && index.index_type == HNSWIndex::TYPE_NAME) {
 				hnsw_index = &index.Cast<HNSWIndex>();

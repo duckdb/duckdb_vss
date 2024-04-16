@@ -164,8 +164,11 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 
 	auto lock = rwlock.GetExclusiveLock();
 	// Is this a new index or an existing index?
-	if (info.IsValid()) {
+	if (info.IsValid() && info.root != 0) {
+
+		// Set the root node
 		root_block_ptr.Set(info.root);
+
 		D_ASSERT(info.allocator_infos.size() == 1);
 		linked_block_allocator->Init(info.allocator_infos[0]);
 
