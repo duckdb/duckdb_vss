@@ -32,12 +32,13 @@ public:
 		}
 
 		// Verify the options
+
 		for (auto &option : create_index.info->options) {
 			auto &k = option.first;
 			auto &v = option.second;
 			if (StringUtil::CIEquals(k, "metric")) {
 				if (v.type() != LogicalType::VARCHAR) {
-					throw BinderException("HNSW index metric must be a string");
+					throw BinderException("HNSW index 'metric' must be a string");
 				}
 				auto metric = v.GetValue<string>();
 				if (HNSWIndex::METRIC_KIND_MAP.find(metric) == HNSWIndex::METRIC_KIND_MAP.end()) {
@@ -45,9 +46,44 @@ public:
 					for (auto &entry : HNSWIndex::METRIC_KIND_MAP) {
 						allowed_metrics.push_back(StringUtil::Format("'%s'", entry.first));
 					}
-					throw BinderException("HNSW index metric must be one of: %s",
+					throw BinderException("HNSW index 'metric' must be one of: %s",
 					                      StringUtil::Join(allowed_metrics, ", "));
 				}
+			}
+			else if(StringUtil::CIEquals(k, "ef_construction")) {
+				if (v.type() != LogicalType::INTEGER) {
+					throw BinderException("HNSW index 'ef_construction' must be an integer");
+				}
+				if(v.GetValue<int32_t>() < 1) {
+					throw BinderException("HNSW index 'ef_construction' must be at least 1");
+				}
+			}
+			else if(StringUtil::CIEquals(k, "ef_search")) {
+				if (v.type() != LogicalType::INTEGER) {
+					throw BinderException("HNSW index 'ef_search' must be an integer");
+				}
+				if (v.GetValue<int32_t>() < 1) {
+					throw BinderException("HNSW index 'ef_search' must be at least 1");
+				}
+			}
+			else if(StringUtil::CIEquals(k, "M")) {
+				if (v.type() != LogicalType::INTEGER) {
+					throw BinderException("HNSW index 'M' must be an integer");
+				}
+				if(v.GetValue<int32_t>() < 2) {
+					throw BinderException("HNSW index 'M' must be at least 2");
+				}
+			}
+			else if(StringUtil::CIEquals(k, "M0")) {
+				if (v.type() != LogicalType::INTEGER) {
+					throw BinderException("HNSW index 'M0' must be an integer");
+				}
+				if(v.GetValue<int32_t>() < 2) {
+					throw BinderException("HNSW index 'M0' must be at least 2");
+				}
+			}
+			else {
+				throw BinderException("Unknown option for HNSW index: '%s'", k);
 			}
 		}
 
