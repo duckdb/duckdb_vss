@@ -5,13 +5,13 @@ name: Main Extension Distribution Pipeline
 on:
   pull_request:
     branches:
-      - main
+      - v0.10.2
     paths-ignore:
       - '**/README.md'
       - 'doc/**'
   push:
     branches:
-      - main
+      - v0.10.2
     paths-ignore:
       - '**/README.md'
       - 'doc/**'
@@ -24,7 +24,7 @@ concurrency:
 jobs:
   duckdb-stable-build:
     name: Build extension binaries
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@main
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v0.10.2
     with:
       vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
       duckdb_version: main
@@ -33,9 +33,9 @@ jobs:
   duckdb-stable-deploy:
     name: Deploy extension binaries
     needs: duckdb-stable-build
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_deploy.yml@main
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_deploy.yml@v0.10.2
     secrets: inherit
     with:
       duckdb_version: main
       extension_name: vss
-      deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
+      deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'v0.10.2' }}
