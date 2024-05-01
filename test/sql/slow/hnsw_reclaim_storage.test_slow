@@ -3,6 +3,9 @@ require vss
 load __TEST_DIR__/hnsw_reclaim_space.db
 
 statement ok
+SET hnsw_enable_experimental_persistence = true;
+
+statement ok
 CREATE TABLE vecs AS SELECT i as i, array_value(i, i, i)::FLOAT[3] as vec FROM range(1000000) tbl(i);
 
 statement ok
