@@ -1,6 +1,7 @@
 #include "duckdb/optimizer/optimizer_extension.hpp"
 #include "duckdb/planner/operator/logical_create_index.hpp"
 #include "duckdb/parser/parsed_data/create_index_info.hpp"
+#include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 
 #include "hnsw/hnsw.hpp"
 #include "hnsw/hnsw_index.hpp"
@@ -31,8 +32,18 @@ public:
 			return;
 		}
 
-		// Verify the options
+		Value enable_persistence;
+		context.TryGetCurrentSetting("hnsw_enable_experimental_persistence", enable_persistence);
 
+		auto is_disk_db = !create_index.table.GetStorage().db.GetStorageManager().InMemory();
+		auto is_persistence_disabled = !enable_persistence.GetValue<bool>();
+
+		if (is_disk_db && is_persistence_disabled) {
+			throw BinderException("HNSW indexes can only be created in in-memory databases, or when the configuration "
+			                      "option 'hnsw_enable_experimental_persistence' is set to true.");
+		}
+
+		// Verify the options
 		for (auto &option : create_index.info->options) {
 			auto &k = option.first;
 			auto &v = option.second;
@@ -49,40 +60,35 @@ public:
 					throw BinderException("HNSW index 'metric' must be one of: %s",
 					                      StringUtil::Join(allowed_metrics, ", "));
 				}
-			}
-			else if(StringUtil::CIEquals(k, "ef_construction")) {
+			} else if (StringUtil::CIEquals(k, "ef_construction")) {
 				if (v.type() != LogicalType::INTEGER) {
 					throw BinderException("HNSW index 'ef_construction' must be an integer");
 				}
-				if(v.GetValue<int32_t>() < 1) {
+				if (v.GetValue<int32_t>() < 1) {
 					throw BinderException("HNSW index 'ef_construction' must be at least 1");
 				}
-			}
-			else if(StringUtil::CIEquals(k, "ef_search")) {
+			} else if (StringUtil::CIEquals(k, "ef_search")) {
 				if (v.type() != LogicalType::INTEGER) {
 					throw BinderException("HNSW index 'ef_search' must be an integer");
 				}
 				if (v.GetValue<int32_t>() < 1) {
 					throw BinderException("HNSW index 'ef_search' must be at least 1");
 				}
-			}
-			else if(StringUtil::CIEquals(k, "M")) {
+			} else if (StringUtil::CIEquals(k, "M")) {
 				if (v.type() != LogicalType::INTEGER) {
 					throw BinderException("HNSW index 'M' must be an integer");
 				}
-				if(v.GetValue<int32_t>() < 2) {
+				if (v.GetValue<int32_t>() < 2) {
 					throw BinderException("HNSW index 'M' must be at least 2");
 				}
-			}
-			else if(StringUtil::CIEquals(k, "M0")) {
+			} else if (StringUtil::CIEquals(k, "M0")) {
 				if (v.type() != LogicalType::INTEGER) {
 					throw BinderException("HNSW index 'M0' must be an integer");
 				}
-				if(v.GetValue<int32_t>() < 2) {
+				if (v.GetValue<int32_t>() < 2) {
 					throw BinderException("HNSW index 'M0' must be at least 2");
 				}
-			}
-			else {
+			} else {
 				throw BinderException("Unknown option for HNSW index: '%s'", k);
 			}
 		}
@@ -135,6 +141,9 @@ public:
 //-------------------------------------------------------------
 void HNSWModule::RegisterPlanIndexCreate(DatabaseInstance &db) {
 	// Register the optimizer extension
+	db.config.AddExtensionOption("hnsw_enable_experimental_persistence",
+	                             "experimental: enable creating HNSW indexes in persistent databases",
+	                             LogicalType::BOOLEAN, Value::BOOLEAN(false));
 	db.config.optimizer_extensions.push_back(HNSWIndexInsertionRewriter());
 }
 

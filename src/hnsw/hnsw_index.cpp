@@ -186,7 +186,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		config.connectivity_base = m0_opt->second.GetValue<int32_t>();
 	}
 
-	index = unum::usearch::index_dense_t::make(metric, config);
+	index = unum::usearch::index_dense_gt<row_t>::make(metric, config);
 
 	auto lock = rwlock.GetExclusiveLock();
 	// Is this a new index or an existing index?
@@ -199,7 +199,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		linked_block_allocator->Init(info.allocator_infos[0]);
 
 		// Is there anything to deserialize? We could have an empty index
-		if(!info.allocator_infos[0].buffer_ids.empty()) {
+		if (!info.allocator_infos[0].buffer_ids.empty()) {
 			LinkedBlockReader reader(*linked_block_allocator, root_block_ptr);
 			index.load_from_stream(
 			    [&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
@@ -310,7 +310,7 @@ unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t 
 	state->total_rows = search_result.size();
 	state->row_ids = make_uniq_array<row_t>(search_result.size());
 
-	search_result.dump_to(reinterpret_cast<uint64_t *>(state->row_ids.get()));
+	search_result.dump_to(state->row_ids.get());
 	return std::move(state);
 }
 

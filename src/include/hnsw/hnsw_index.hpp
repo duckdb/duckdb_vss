@@ -18,7 +18,7 @@ struct HNSWIndexStats {
 	idx_t count;
 	idx_t capacity;
 	idx_t approx_size;
-	vector<unum::usearch::index_dense_t::stats_t> level_stats;
+	vector<unum::usearch::index_dense_gt<row_t>::stats_t> level_stats;
 };
 
 class HNSWIndex : public Index {
@@ -33,7 +33,7 @@ public:
 	          const IndexStorageInfo &info = IndexStorageInfo(), idx_t estimated_cardinality = 0);
 
 	//! The actual usearch index
-	unum::usearch::index_dense_t index;
+	unum::usearch::index_dense_gt<row_t> index;
 
 	//! Block pointer to the root of the index
 	IndexPointer root_block_ptr;

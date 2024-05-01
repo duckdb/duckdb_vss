@@ -172,8 +172,10 @@ static void CompactIndexPragma(ClientContext &context, const FunctionParameters 
 
 	auto &storage = table_entry.GetStorage();
 	bool found_index = false;
+
+	storage.info->InitializeIndexes(context);
 	storage.info->indexes.Scan([&](Index &index_entry) {
-		if (index_entry.name == index_name && index_entry.index_type == HNSWIndex::TYPE_NAME) {
+		if (index_entry.name == index_name && index_entry.index_type == HNSWIndex::TYPE_NAME && !index_entry.IsUnknown()) {
 			auto &hnsw_index = index_entry.Cast<HNSWIndex>();
 			hnsw_index.Compact();
 			found_index = true;

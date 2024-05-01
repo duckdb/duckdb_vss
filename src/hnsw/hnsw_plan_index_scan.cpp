@@ -60,7 +60,7 @@ public:
 		auto &projection = immediate_child->Cast<LogicalProjection>();
 		auto projection_index = bound_column_ref.binding.column_index;
 
-		if(projection.expressions[projection_index]->type != ExpressionType::BOUND_FUNCTION) {
+		if (projection.expressions[projection_index]->type != ExpressionType::BOUND_FUNCTION) {
 			// The expression has to be a function
 			return;
 		}

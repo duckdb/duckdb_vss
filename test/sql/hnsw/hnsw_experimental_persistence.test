@@ -1,0 +1,17 @@
+require vss
+
+require noforcestorage
+
+# Step 0: Open a database
+load __TEST_DIR__/temp_index_hnsw_storage.db
+
+statement ok
+CREATE TABLE t1 (vec FLOAT[3]);
+
+statement ok
+INSERT INTO t1 SELECT array_value(a,b,c) FROM range(1,10) ra(a), range(1,10) rb(b), range(1,10) rc(c);
+
+statement error
+CREATE INDEX my_idx ON t1 USING HNSW (vec);
+----
+Binder Error: HNSW indexes can only be created in in-memory databases, or when the configuration option 'hnsw_enable_experimental_persistence' is set to true.
