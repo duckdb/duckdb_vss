@@ -3,7 +3,8 @@
 #include <unordered_map>
 #include <cfloat>
 
-#define USEARCH_USE_SIMSIMD 0
+#define SIMSIMD_DYNAMIC_DISPATCH 1
+#define USEARCH_USE_SIMSIMD 1
 #define USEARCH_USE_FP16LIB 1
 #define USEARCH_USE_OPENMP  0
 
