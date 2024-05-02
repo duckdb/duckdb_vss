@@ -12,6 +12,7 @@
 
 namespace duckdb {
 
+
 static void LoadInternal(DatabaseInstance &instance) {
 	// Register the HNSW index module
 	HNSWModule::Register(instance);
