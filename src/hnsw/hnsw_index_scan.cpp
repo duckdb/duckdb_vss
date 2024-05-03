@@ -60,7 +60,7 @@ static unique_ptr<GlobalTableFunctionState> HNSWIndexScanInitGlobal(ClientContex
 	local_storage.InitializeScan(bind_data.table.GetStorage(), result->local_storage_state.local_state, input.filters);
 
 	// Initialize the scan state for the index
-	result->index_state = bind_data.index.Cast<HNSWIndex>().InitializeScan(bind_data.query.get(), bind_data.limit);
+	result->index_state = bind_data.index.Cast<HNSWIndex>().InitializeScan(bind_data.query.get(), bind_data.limit, context);
 
 	return std::move(result);
 }

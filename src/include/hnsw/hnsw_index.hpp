@@ -41,7 +41,7 @@ public:
 	//! The allocator used to persist linked blocks
 	unique_ptr<FixedSizeAllocator> linked_block_allocator;
 
-	unique_ptr<IndexScanState> InitializeScan(float *query_vector, idx_t limit);
+	unique_ptr<IndexScanState> InitializeScan(float *query_vector, idx_t limit, ClientContext &context);
 	idx_t Scan(IndexScanState &state, Vector &result);
 
 	idx_t GetVectorSize() const;

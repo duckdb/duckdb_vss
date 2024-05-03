@@ -610,6 +610,12 @@ public:
     search_result_t search(f32_t const* vector, std::size_t wanted, std::size_t thread = any_thread(), bool exact = false) const { return search_(vector, wanted, thread, exact, casts_.from_f32); }
     search_result_t search(f64_t const* vector, std::size_t wanted, std::size_t thread = any_thread(), bool exact = false) const { return search_(vector, wanted, thread, exact, casts_.from_f64); }
 
+	search_result_t ef_search(b1x8_t const* vector, std::size_t wanted, std::size_t ef_search, std::size_t thread = any_thread(), bool exact = false) const { return search_(vector, wanted, thread, exact, casts_.from_b1x8, ef_search); }
+    search_result_t ef_search(i8_t const* vector, std::size_t wanted, std::size_t ef_search, std::size_t thread = any_thread(), bool exact = false) const { return search_(vector, wanted, thread, exact, casts_.from_i8, ef_search); }
+    search_result_t ef_search(f16_t const* vector, std::size_t wanted, std::size_t ef_search, std::size_t thread = any_thread(), bool exact = false) const { return search_(vector, wanted, thread, exact, casts_.from_f16, ef_search); }
+    search_result_t ef_search(f32_t const* vector, std::size_t wanted, std::size_t ef_search, std::size_t thread = any_thread(), bool exact = false) const { return search_(vector, wanted, thread, exact, casts_.from_f32, ef_search); }
+    search_result_t ef_search(f64_t const* vector, std::size_t wanted, std::size_t ef_search, std::size_t thread = any_thread(), bool exact = false) const { return search_(vector, wanted, thread, exact, casts_.from_f64, ef_search); }
+
     std::size_t get(vector_key_t key, b1x8_t* vector, std::size_t vectors_count = 1) const { return get_(key, vector, vectors_count, casts_.to_b1x8); }
     std::size_t get(vector_key_t key, i8_t* vector, std::size_t vectors_count = 1) const { return get_(key, vector, vectors_count, casts_.to_i8); }
     std::size_t get(vector_key_t key, f16_t* vector, std::size_t vectors_count = 1) const { return get_(key, vector, vectors_count, casts_.to_f16); }
@@ -1785,6 +1791,30 @@ private:
 		index_search_config_t search_config;
 		search_config.thread = lock.thread_id;
 		search_config.expansion = config_.expansion_search;
+		search_config.exact = exact;
+
+		auto allow = [=](member_cref_t const& member) noexcept { return member.key != free_key_; };
+		return typed_->search(vector_data, wanted, metric_proxy_t{*this}, search_config, allow);
+	}
+
+	template <typename scalar_at>
+	search_result_t search_(                         //
+	    scalar_at const* vector, std::size_t wanted, //
+	    std::size_t thread, bool exact, cast_t const& cast, std::size_t ef_search) const {
+
+		// Cast the vector, if needed for compatibility with `metric_`
+		thread_lock_t lock = thread_lock_(thread);
+		byte_t const* vector_data = reinterpret_cast<byte_t const*>(vector);
+		{
+			byte_t* casted_data = cast_buffer_.data() + metric_.bytes_per_vector() * lock.thread_id;
+			bool casted = cast(vector_data, dimensions(), casted_data);
+			if (casted)
+				vector_data = casted_data;
+		}
+
+		index_search_config_t search_config;
+		search_config.thread = lock.thread_id;
+		search_config.expansion = ef_search;
 		search_config.exact = exact;
 
 		auto allow = [=](member_cref_t const& member) noexcept { return member.key != free_key_; };
