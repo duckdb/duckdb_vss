@@ -299,12 +299,25 @@ struct HNSWIndexScanState : public IndexScanState {
 	unique_array<row_t> row_ids = nullptr;
 };
 
-unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t limit) {
+unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t limit, ClientContext &context) {
 	auto state = make_uniq<HNSWIndexScanState>();
+
+	// Try to get the ef_search parameter from the database or use the default value
+	auto ef_search = index.expansion_search();
+
+	Value hnsw_ef_search_opt;
+	if(context.TryGetCurrentSetting("hnsw_ef_search", hnsw_ef_search_opt)) {
+		if(!hnsw_ef_search_opt.IsNull() && hnsw_ef_search_opt.type() == LogicalType::BIGINT) {
+			auto val = hnsw_ef_search_opt.GetValue<int64_t>();
+			if(val > 0) {
+				ef_search = static_cast<idx_t>(val);
+			}
+		}
+	}
 
 	// Acquire a shared lock to search the index
 	auto lock = rwlock.GetSharedLock();
-	auto search_result = index.search(query_vector, limit);
+	auto search_result = index.ef_search(query_vector, limit, ef_search);
 
 	state->current_row = 0;
 	state->total_rows = search_result.size();
@@ -524,6 +537,11 @@ void HNSWModule::RegisterIndex(DatabaseInstance &db) {
 		                                input.unbound_expressions, input.db, input.options, input.storage_info);
 		return std::move(res);
 	};
+
+	// Register scan option
+	db.config.AddExtensionOption("hnsw_ef_search",
+	                             "experimental: override the ef_search parameter when scanning HNSW indexes",
+	                             LogicalType::BIGINT);
 
 	// Register the index type
 	db.config.GetIndexTypes().RegisterIndexType(index_type);
