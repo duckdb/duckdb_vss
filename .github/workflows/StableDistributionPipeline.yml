@@ -38,4 +38,4 @@ jobs:
     with:
       duckdb_version: v0.10.2
       extension_name: vss
-      deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'v0.10.2' }}
+      deploy_latest: ${{ startsWith(github.ref, 'refs/heads/v') || github.ref == 'refs/heads/main' }}
