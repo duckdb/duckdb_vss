@@ -444,8 +444,16 @@ ErrorData HNSWIndex::Insert(IndexLock &lock, DataChunk &input, Vector &rowid_vec
 	return ErrorData {};
 }
 
-ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &entries, Vector &rowid_vec) {
-	Construct(entries, rowid_vec, unum::usearch::index_dense_t::any_thread());
+ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &appended_data, Vector &row_identifiers) {
+	DataChunk expression_result;
+	expression_result.Initialize(Allocator::DefaultAllocator(), logical_types);
+
+	// first resolve the expressions for the index
+	ExecuteExpressions(appended_data, expression_result);
+
+	// now insert into the index
+	Construct(expression_result, row_identifiers, unum::usearch::index_dense_t::any_thread());
+
 	return ErrorData {};
 }
 
