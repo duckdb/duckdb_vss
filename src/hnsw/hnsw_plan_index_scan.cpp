@@ -130,14 +130,14 @@ public:
 		}
 
 		auto &duck_table = table.Cast<DuckTableEntry>();
-		auto &table_info = table.GetStorage().info;
+		auto &table_info = *table.GetStorage().GetDataTableInfo();
 
 		// Load the indexes
-		table_info->InitializeIndexes(context);
+		table_info.InitializeIndexes(context);
 
 		// Find the index
 		unique_ptr<HNSWIndexScanBindData> bind_data = nullptr;
-		table_info->indexes.Scan([&](Index &index_entry) {
+		table_info.GetIndexes().Scan([&](Index &index_entry) {
 			if (index_entry.index_type == HNSWIndex::TYPE_NAME) {
 				auto &hnsw_index = index_entry.Cast<HNSWIndex>();
 
