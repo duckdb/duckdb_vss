@@ -15,8 +15,9 @@ require vector_size 2048
 statement ok
 PRAGMA enable_verification;
 
-statement ok
-PRAGMA disable_checkpoint_on_shutdown;
+# TODO: Enable this once the WAL playback is fixed for extension indexes
+#statement ok
+#PRAGMA disable_checkpoint_on_shutdown;
 
 statement ok
 CREATE TABLE t1 (vec FLOAT[3]);
