@@ -1,5 +1,7 @@
 require vss
 
+require noforcestorage
+
 statement ok
 CREATE TABLE embeddings (id INT, vec FLOAT[3]);
 

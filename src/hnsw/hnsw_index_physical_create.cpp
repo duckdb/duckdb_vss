@@ -139,13 +139,13 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	// Get the entry as a DuckIndexEntry
 	auto &index = index_entry->Cast<DuckIndexEntry>();
 	index.initial_index_size = gstate.global_index->GetInMemorySize();
-	index.info = make_uniq<IndexDataTableInfo>(storage.info, index.name);
+	index.info = make_uniq<IndexDataTableInfo>(storage.GetDataTableInfo(), index.name);
 	for (auto &parsed_expr : info->parsed_expressions) {
 		index.parsed_expressions.push_back(parsed_expr->Copy());
 	}
 
 	// Finally add it to storage
-	storage.info->indexes.AddIndex(std::move(gstate.global_index));
+	storage.GetDataTableInfo()->GetIndexes().AddIndex(std::move(gstate.global_index));
 
 	return SinkFinalizeType::READY;
 }

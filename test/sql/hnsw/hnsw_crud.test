@@ -4,6 +4,9 @@ require vss
 load __TEST_DIR__/temp_index_hnsw_crud_storage.db
 
 statement ok
+SET hnsw_enable_experimental_persistence = true;
+
+statement ok
 CREATE TABLE t1 (vec FLOAT[3]);
 
 statement ok

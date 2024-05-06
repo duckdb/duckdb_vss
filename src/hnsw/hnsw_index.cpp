@@ -186,7 +186,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		config.connectivity_base = m0_opt->second.GetValue<int32_t>();
 	}
 
-	index = unum::usearch::index_dense_t::make(metric, config);
+	index = unum::usearch::index_dense_gt<row_t>::make(metric, config);
 
 	auto lock = rwlock.GetExclusiveLock();
 	// Is this a new index or an existing index?
@@ -199,7 +199,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		linked_block_allocator->Init(info.allocator_infos[0]);
 
 		// Is there anything to deserialize? We could have an empty index
-		if(!info.allocator_infos[0].buffer_ids.empty()) {
+		if (!info.allocator_infos[0].buffer_ids.empty()) {
 			LinkedBlockReader reader(*linked_block_allocator, root_block_ptr);
 			index.load_from_stream(
 			    [&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
@@ -299,18 +299,31 @@ struct HNSWIndexScanState : public IndexScanState {
 	unique_array<row_t> row_ids = nullptr;
 };
 
-unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t limit) {
+unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t limit, ClientContext &context) {
 	auto state = make_uniq<HNSWIndexScanState>();
+
+	// Try to get the ef_search parameter from the database or use the default value
+	auto ef_search = index.expansion_search();
+
+	Value hnsw_ef_search_opt;
+	if(context.TryGetCurrentSetting("hnsw_ef_search", hnsw_ef_search_opt)) {
+		if(!hnsw_ef_search_opt.IsNull() && hnsw_ef_search_opt.type() == LogicalType::BIGINT) {
+			auto val = hnsw_ef_search_opt.GetValue<int64_t>();
+			if(val > 0) {
+				ef_search = static_cast<idx_t>(val);
+			}
+		}
+	}
 
 	// Acquire a shared lock to search the index
 	auto lock = rwlock.GetSharedLock();
-	auto search_result = index.search(query_vector, limit);
+	auto search_result = index.ef_search(query_vector, limit, ef_search);
 
 	state->current_row = 0;
 	state->total_rows = search_result.size();
 	state->row_ids = make_uniq_array<row_t>(search_result.size());
 
-	search_result.dump_to(reinterpret_cast<uint64_t *>(state->row_ids.get()));
+	search_result.dump_to(state->row_ids.get());
 	return std::move(state);
 }
 
@@ -431,8 +444,16 @@ ErrorData HNSWIndex::Insert(IndexLock &lock, DataChunk &input, Vector &rowid_vec
 	return ErrorData {};
 }
 
-ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &entries, Vector &rowid_vec) {
-	Construct(entries, rowid_vec, unum::usearch::index_dense_t::any_thread());
+ErrorData HNSWIndex::Append(IndexLock &lock, DataChunk &appended_data, Vector &row_identifiers) {
+	DataChunk expression_result;
+	expression_result.Initialize(Allocator::DefaultAllocator(), logical_types);
+
+	// first resolve the expressions for the index
+	ExecuteExpressions(appended_data, expression_result);
+
+	// now insert into the index
+	Construct(expression_result, row_identifiers, unum::usearch::index_dense_t::any_thread());
+
 	return ErrorData {};
 }
 
@@ -480,7 +501,7 @@ IndexStorageInfo HNSWIndex::GetStorageInfo(const bool get_buffers) {
 	if (!get_buffers) {
 		// use the partial block manager to serialize all allocator data
 		auto &block_manager = table_io_manager.GetIndexBlockManager();
-		PartialBlockManager partial_block_manager(block_manager, CheckpointType::FULL_CHECKPOINT);
+		PartialBlockManager partial_block_manager(block_manager, PartialBlockType::FULL_CHECKPOINT);
 		linked_block_allocator->SerializeBuffers(partial_block_manager);
 		partial_block_manager.FlushPartialBlocks();
 	} else {
@@ -524,6 +545,11 @@ void HNSWModule::RegisterIndex(DatabaseInstance &db) {
 		                                input.unbound_expressions, input.db, input.options, input.storage_info);
 		return std::move(res);
 	};
+
+	// Register scan option
+	db.config.AddExtensionOption("hnsw_ef_search",
+	                             "experimental: override the ef_search parameter when scanning HNSW indexes",
+	                             LogicalType::BIGINT);
 
 	// Register the index type
 	db.config.GetIndexTypes().RegisterIndexType(index_type);

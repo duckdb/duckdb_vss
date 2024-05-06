@@ -98,8 +98,9 @@ static void HNSWIndexInfoExecute(ClientContext &context, TableFunctionInput &dat
 		auto &storage = table_entry.GetStorage();
 		HNSWIndex *hnsw_index = nullptr;
 
-		storage.info->InitializeIndexes(context);
-		storage.info->indexes.Scan([&](Index &index) {
+		auto &table_info = *storage.GetDataTableInfo();
+		table_info.InitializeIndexes(context);
+		table_info.GetIndexes().Scan([&](Index &index) {
 			if (index.name == index_entry.name && index.index_type == HNSWIndex::TYPE_NAME) {
 				hnsw_index = &index.Cast<HNSWIndex>();
 				return true;
@@ -172,8 +173,11 @@ static void CompactIndexPragma(ClientContext &context, const FunctionParameters 
 
 	auto &storage = table_entry.GetStorage();
 	bool found_index = false;
-	storage.info->indexes.Scan([&](Index &index_entry) {
-		if (index_entry.name == index_name && index_entry.index_type == HNSWIndex::TYPE_NAME) {
+
+	auto &table_info = *storage.GetDataTableInfo();
+	table_info.InitializeIndexes(context);
+	table_info.GetIndexes().Scan([&](Index &index_entry) {
+		if (index_entry.name == index_name && index_entry.index_type == HNSWIndex::TYPE_NAME && !index_entry.IsUnknown()) {
 			auto &hnsw_index = index_entry.Cast<HNSWIndex>();
 			hnsw_index.Compact();
 			found_index = true;
