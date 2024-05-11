@@ -1,0 +1,8 @@
+require-env LOCAL_EXTENSION_REPO
+
+require vss
+
+query I
+SELECT count(*) FROM duckdb_extensions() WHERE extension_name == 'vss' AND extension_version IS NOT NULL AND extension_version != '';
+----
+1
