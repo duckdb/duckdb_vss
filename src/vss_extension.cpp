@@ -31,8 +31,7 @@ std::string VssExtension::Name() {
 extern "C" {
 
 DUCKDB_EXTENSION_API void vss_init(duckdb::DatabaseInstance &db) {
-	duckdb::DuckDB db_wrapper(db);
-	db_wrapper.LoadExtension<duckdb::VssExtension>();
+	LoadInternal(db);
 }
 
 DUCKDB_EXTENSION_API const char *vss_version() {
