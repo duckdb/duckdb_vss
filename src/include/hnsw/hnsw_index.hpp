@@ -1,11 +1,12 @@
 #pragma once
 
-#include "duckdb/storage/index.hpp"
-#include "duckdb/common/array.hpp"
+
+#include "duckdb/execution/index/bound_index.hpp"
 #include "duckdb/execution/index/index_pointer.hpp"
 #include "duckdb/execution/index/fixed_size_allocator.hpp"
-#include "duckdb/common/unordered_map.hpp"
+#include "duckdb/common/array.hpp"
 #include "duckdb/common/case_insensitive_map.hpp"
+#include "duckdb/common/unordered_map.hpp"
 
 #include "usearch/duckdb_usearch.hpp"
 
@@ -21,7 +22,7 @@ struct HNSWIndexStats {
 	vector<unum::usearch::index_dense_gt<row_t>::stats_t> level_stats;
 };
 
-class HNSWIndex : public Index {
+class HNSWIndex : public BoundIndex {
 public:
 	// The type name of the HNSWIndex
 	static constexpr const char *TYPE_NAME = "HNSW";
@@ -77,7 +78,7 @@ public:
 
 	//! Merge another index into this index. The lock obtained from InitializeLock must be held, and the other
 	//! index must also be locked during the merge
-	bool MergeIndexes(IndexLock &state, Index &other_index) override;
+	bool MergeIndexes(IndexLock &state, BoundIndex &other_index) override;
 
 	//! Traverses an HNSWIndex and vacuums the qualifying nodes. The lock obtained from InitializeLock must be held
 	void Vacuum(IndexLock &state) override;

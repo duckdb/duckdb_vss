@@ -33,7 +33,7 @@ PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatal
 class CreateHNSWIndexGlobalState : public GlobalSinkState {
 public:
 	//! Global index to be added to the table
-	unique_ptr<Index> global_index;
+	unique_ptr<HNSWIndex> global_index;
 	atomic<idx_t> next_thread_id = {0};
 };
 
@@ -74,7 +74,7 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
                                              OperatorSinkInput &input) const {
 	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
 	auto &lstate = input.local_state.Cast<CreateHNSWIndexLocalState>();
-	auto &index = gstate.global_index->Cast<HNSWIndex>();
+	auto &index = *gstate.global_index;
 
 	if (lstate.thread_id == idx_t(-1)) {
 		lstate.thread_id = gstate.next_thread_id++;
@@ -119,7 +119,7 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	// If not in memory, persist the index to disk
 	if (!storage.db.GetStorageManager().InMemory()) {
 		// Finalize the index
-		gstate.global_index->Cast<HNSWIndex>().PersistToDisk();
+		gstate.global_index->PersistToDisk();
 	}
 
 	if (!storage.IsRoot()) {
@@ -138,14 +138,14 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 
 	// Get the entry as a DuckIndexEntry
 	auto &index = index_entry->Cast<DuckIndexEntry>();
-	index.initial_index_size = gstate.global_index->GetInMemorySize();
+	index.initial_index_size = gstate.global_index->Cast<BoundIndex>().GetInMemorySize();
 	index.info = make_uniq<IndexDataTableInfo>(storage.GetDataTableInfo(), index.name);
 	for (auto &parsed_expr : info->parsed_expressions) {
 		index.parsed_expressions.push_back(parsed_expr->Copy());
 	}
 
 	// Finally add it to storage
-	storage.GetDataTableInfo()->GetIndexes().AddIndex(std::move(gstate.global_index));
+	storage.AddIndex(std::move(gstate.global_index));
 
 	return SinkFinalizeType::READY;
 }

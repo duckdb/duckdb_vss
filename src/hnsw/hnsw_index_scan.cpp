@@ -124,7 +124,7 @@ unique_ptr<NodeStatistics> HNSWIndexScanCardinality(ClientContext &context, cons
 //-------------------------------------------------------------------------
 static string HNSWIndexScanToString(const FunctionData *bind_data_p) {
 	auto &bind_data = bind_data_p->Cast<HNSWIndexScanBindData>();
-	return bind_data.table.name + " (HNSW INDEX SCAN : " + bind_data.index.name + ")";
+	return bind_data.table.name + " (HNSW INDEX SCAN : " + bind_data.index.GetIndexName() + ")";
 }
 
 //-------------------------------------------------------------------------
