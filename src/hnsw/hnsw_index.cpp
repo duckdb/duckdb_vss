@@ -122,7 +122,7 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
                      TableIOManager &table_io_manager, const vector<unique_ptr<Expression>> &unbound_expressions,
                      AttachedDatabase &db, const case_insensitive_map_t<Value> &options, const IndexStorageInfo &info,
                      idx_t estimated_cardinality)
-    : Index(name, TYPE_NAME, index_constraint_type, column_ids, table_io_manager, unbound_expressions, db) {
+    : BoundIndex(name, TYPE_NAME, index_constraint_type, column_ids, table_io_manager, unbound_expressions, db) {
 
 	if (index_constraint_type != IndexConstraintType::NONE) {
 		throw NotImplementedException("HNSW indexes do not support unique or primary key constraints");
@@ -517,7 +517,7 @@ idx_t HNSWIndex::GetInMemorySize(IndexLock &state) {
 	return index.memory_usage();
 }
 
-bool HNSWIndex::MergeIndexes(IndexLock &state, Index &other_index) {
+bool HNSWIndex::MergeIndexes(IndexLock &state, BoundIndex &other_index) {
 	throw NotImplementedException("HNSWIndex::MergeIndexes() not implemented");
 }
 
@@ -538,9 +538,9 @@ string HNSWIndex::VerifyAndToString(IndexLock &state, const bool only_verify) {
 void HNSWModule::RegisterIndex(DatabaseInstance &db) {
 
 	IndexType index_type;
-	index_type.name = HNSWIndex::TYPE_NAME;
 
-	index_type.create_instance = [](CreateIndexInput &input) -> unique_ptr<Index> {
+	index_type.name = HNSWIndex::TYPE_NAME;
+	index_type.create_instance = [](CreateIndexInput &input) -> unique_ptr<BoundIndex> {
 		auto res = make_uniq<HNSWIndex>(input.name, input.constraint_type, input.column_ids, input.table_io_manager,
 		                                input.unbound_expressions, input.db, input.options, input.storage_info);
 		return std::move(res);

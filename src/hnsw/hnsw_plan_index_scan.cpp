@@ -24,7 +24,7 @@ public:
 		optimize_function = HNSWIndexScanOptimizer::Optimize;
 	}
 
-	static bool TryOptimize(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
+	static bool TryOptimize(ClientContext &context, unique_ptr<LogicalOperator> &plan) {
 		// Look for a TopN operator
 		auto &op = *plan;
 
@@ -132,38 +132,32 @@ public:
 		auto &duck_table = table.Cast<DuckTableEntry>();
 		auto &table_info = *table.GetStorage().GetDataTableInfo();
 
-		// Load the indexes
-		table_info.InitializeIndexes(context);
-
 		// Find the index
 		unique_ptr<HNSWIndexScanBindData> bind_data = nullptr;
-		table_info.GetIndexes().Scan([&](Index &index_entry) {
-			if (index_entry.index_type == HNSWIndex::TYPE_NAME) {
-				auto &hnsw_index = index_entry.Cast<HNSWIndex>();
+		table_info.GetIndexes().BindAndScan<HNSWIndex>(context, table_info, [&](HNSWIndex &index_entry) {
+			auto &hnsw_index = index_entry.Cast<HNSWIndex>();
 
-				if (hnsw_index.GetVectorSize() != array_size) {
-					// The vector size of the index does not match the vector size of the query
-					return false;
-				}
-
-				if (!hnsw_index.MatchesDistanceFunction(bound_function.function.name)) {
-					// The distance function of the index does not match the distance function of the query
-					return false;
-				}
-
-				// Create a query vector from the constant value
-				auto query_vector = make_unsafe_uniq_array<float>(array_size);
-				auto vector_elements = ArrayValue::GetChildren(target_value);
-				for (idx_t i = 0; i < array_size; i++) {
-					query_vector[i] = vector_elements[i].GetValue<float>();
-				}
-
-				// Create the bind data for this index
-				bind_data =
-				    make_uniq<HNSWIndexScanBindData>(duck_table, index_entry, top_n.limit, std::move(query_vector));
-				return true;
+			if (hnsw_index.GetVectorSize() != array_size) {
+				// The vector size of the index does not match the vector size of the query
+				return false;
 			}
-			return false;
+
+			if (!hnsw_index.MatchesDistanceFunction(bound_function.function.name)) {
+				// The distance function of the index does not match the distance function of the query
+				return false;
+			}
+
+			// Create a query vector from the constant value
+			auto query_vector = make_unsafe_uniq_array<float>(array_size);
+			auto vector_elements = ArrayValue::GetChildren(target_value);
+			for (idx_t i = 0; i < array_size; i++) {
+				query_vector[i] = vector_elements[i].GetValue<float>();
+			}
+
+			// Create the bind data for this index
+			bind_data =
+				make_uniq<HNSWIndexScanBindData>(duck_table, index_entry, top_n.limit, std::move(query_vector));
+			return true;
 		});
 
 		if (!bind_data) {
@@ -189,12 +183,12 @@ public:
 		return true;
 	}
 
-	static bool OptimizeChildren(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
+	static bool OptimizeChildren(ClientContext &context, unique_ptr<LogicalOperator> &plan) {
 
-		auto ok = TryOptimize(context, info, plan);
+		auto ok = TryOptimize(context, plan);
 		// Recursively optimize the children
 		for (auto &child : plan->children) {
-			ok |= OptimizeChildren(context, info, child);
+			ok |= OptimizeChildren(context, child);
 		}
 		return ok;
 	}
@@ -238,8 +232,8 @@ public:
 		}
 	}
 
-	static void Optimize(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
-		auto did_use_hnsw_scan = OptimizeChildren(context, info, plan);
+	static void Optimize(OptimizerExtensionInput &input, unique_ptr<LogicalOperator> &plan) {
+		auto did_use_hnsw_scan = OptimizeChildren(input.context, plan);
 		if(did_use_hnsw_scan) {
 			MergeProjections(plan);
 		}
