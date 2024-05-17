@@ -24,7 +24,7 @@ public:
 		optimize_function = HNSWIndexScanOptimizer::Optimize;
 	}
 
-	static bool TryOptimize(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
+	static bool TryOptimize(ClientContext &context, unique_ptr<LogicalOperator> &plan) {
 		// Look for a TopN operator
 		auto &op = *plan;
 
@@ -183,12 +183,12 @@ public:
 		return true;
 	}
 
-	static bool OptimizeChildren(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
+	static bool OptimizeChildren(ClientContext &context, unique_ptr<LogicalOperator> &plan) {
 
-		auto ok = TryOptimize(context, info, plan);
+		auto ok = TryOptimize(context, plan);
 		// Recursively optimize the children
 		for (auto &child : plan->children) {
-			ok |= OptimizeChildren(context, info, child);
+			ok |= OptimizeChildren(context, child);
 		}
 		return ok;
 	}
@@ -232,8 +232,8 @@ public:
 		}
 	}
 
-	static void Optimize(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
-		auto did_use_hnsw_scan = OptimizeChildren(context, info, plan);
+	static void Optimize(OptimizerExtensionInput &input, unique_ptr<LogicalOperator> &plan) {
+		auto did_use_hnsw_scan = OptimizeChildren(input.context, plan);
 		if(did_use_hnsw_scan) {
 			MergeProjections(plan);
 		}

@@ -18,7 +18,7 @@ public:
 		optimize_function = HNSWIndexInsertionRewriter::Optimize;
 	}
 
-	static void TryOptimize(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
+	static void TryOptimize(ClientContext &context, unique_ptr<LogicalOperator> &plan) {
 		auto &op = *plan;
 
 		// Look for a CREATE INDEX operator
@@ -125,13 +125,13 @@ public:
 		plan = std::move(physical_create_index);
 	}
 
-	static void Optimize(ClientContext &context, OptimizerExtensionInfo *info, unique_ptr<LogicalOperator> &plan) {
+	static void Optimize(OptimizerExtensionInput &input, unique_ptr<LogicalOperator> &plan) {
 
-		TryOptimize(context, info, plan);
+		TryOptimize(input.context, plan);
 
 		// Recursively traverse the children
 		for (auto &child : plan->children) {
-			Optimize(context, info, child);
+			Optimize(input, child);
 		}
 	};
 };
