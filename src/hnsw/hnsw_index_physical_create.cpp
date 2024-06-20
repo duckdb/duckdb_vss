@@ -62,13 +62,6 @@ unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientCo
 	                         info->options, IndexStorageInfo(), estimated_cardinality);
 
 	return std::move(gstate);
-	/*
-
-	// Create the global index
-
-
-	return std::move(gstate);
-	*/
 }
 
 //-------------------------------------------------------------
@@ -99,24 +92,6 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 	auto &lstate = input.local_state.Cast<CreateHNSWIndexLocalState>();
 	lstate.collection->Append(lstate.append_state, chunk);
 	return SinkResultType::NEED_MORE_INPUT;
-
-	// auto &index = *gstate.global_index;
-	/*
-
-	if (lstate.thread_id == idx_t(-1)) {
-	    lstate.thread_id = gstate.next_thread_id++;
-	}
-
-	if (chunk.ColumnCount() != 2) {
-	    throw NotImplementedException("Custom index creation only supported for single-column indexes");
-	}
-
-	auto &row_identifiers = chunk.data[1];
-
-	// Construct the index
-	index.Construct(chunk, row_identifiers, lstate.thread_id);
-	*/
-	// return SinkResultType::NEED_MORE_INPUT;
 }
 
 //-------------------------------------------------------------
