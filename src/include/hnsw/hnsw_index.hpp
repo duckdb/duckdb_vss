@@ -94,6 +94,9 @@ public:
 		return "Constraint violation in HNSW index";
 	}
 
+	void SetDirty() { is_dirty = true; }
+	void SyncSize() { index_size = index.size(); }
+
 private:
 	bool is_dirty = false;
 	StorageLock rwlock;

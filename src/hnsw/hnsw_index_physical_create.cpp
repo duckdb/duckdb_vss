@@ -1,14 +1,16 @@
 #include "hnsw/hnsw_index_physical_create.hpp"
-#include "hnsw/hnsw_index.hpp"
 
+#include "duckdb/catalog/catalog_entry/duck_index_entry.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
-#include "duckdb/catalog/catalog_entry/duck_index_entry.hpp"
-#include "duckdb/storage/table_io_manager.hpp"
-#include "duckdb/main/database.hpp"
-#include "duckdb/main/attached_database.hpp"
-#include "duckdb/storage/storage_manager.hpp"
 #include "duckdb/common/exception/transaction_exception.hpp"
+#include "duckdb/main/attached_database.hpp"
+#include "duckdb/main/database.hpp"
+#include "duckdb/storage/storage_manager.hpp"
+#include "duckdb/storage/table_io_manager.hpp"
+#include "hnsw/hnsw_index.hpp"
+
+#include "duckdb/parallel/base_pipeline_event.hpp"
 
 namespace duckdb {
 
@@ -30,39 +32,60 @@ PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatal
 //-------------------------------------------------------------
 // Global State
 //-------------------------------------------------------------
-class CreateHNSWIndexGlobalState : public GlobalSinkState {
+class CreateHNSWIndexGlobalState final : public GlobalSinkState {
 public:
 	//! Global index to be added to the table
 	unique_ptr<HNSWIndex> global_index;
-	atomic<idx_t> next_thread_id = {0};
+
+	mutex glock;
+	unique_ptr<ColumnDataCollection> collection;
+	shared_ptr<ClientContext> context;
+
+	// Parallel scan state
+	ColumnDataParallelScanState scan_state;
 };
 
 unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientContext &context) const {
 	auto gstate = make_uniq<CreateHNSWIndexGlobalState>();
 
-	// Create the global index
+	vector<LogicalType> data_types = {unbound_expressions[0]->return_type, LogicalType::ROW_TYPE};
+	gstate->collection = make_uniq<ColumnDataCollection>(BufferManager::GetBufferManager(context), data_types);
+	gstate->context = context.shared_from_this();
+
+	// Create the index
 	auto &storage = table.GetStorage();
 	auto &table_manager = TableIOManager::Get(storage);
 	auto &constraint_type = info->constraint_type;
 	auto &db = storage.db;
-
 	gstate->global_index =
-	    make_uniq<HNSWIndex>(info->index_name, constraint_type, storage_ids, table_manager, unbound_expressions, db,
-	                         info->options, IndexStorageInfo(), estimated_cardinality);
+		make_uniq<HNSWIndex>(info->index_name, constraint_type, storage_ids, table_manager, unbound_expressions, db,
+							 info->options, IndexStorageInfo(), estimated_cardinality);
 
 	return std::move(gstate);
+	/*
+
+	// Create the global index
+
+
+	return std::move(gstate);
+	*/
 }
 
 //-------------------------------------------------------------
 // Local State
 //-------------------------------------------------------------
-class CreateHNSWIndexLocalState : public LocalSinkState {
+class CreateHNSWIndexLocalState final : public LocalSinkState {
 public:
-	idx_t thread_id = idx_t(-1);
+	unique_ptr<ColumnDataCollection> collection;
+	ColumnDataAppendState append_state;
 };
 
 unique_ptr<LocalSinkState> PhysicalCreateHNSWIndex::GetLocalSinkState(ExecutionContext &context) const {
 	auto state = make_uniq<CreateHNSWIndexLocalState>();
+
+	vector<LogicalType> data_types = {unbound_expressions[0]->return_type, LogicalType::ROW_TYPE};
+	state->collection = make_uniq<ColumnDataCollection>(BufferManager::GetBufferManager(context.client), data_types);
+	state->collection->InitializeAppend(state->append_state);
 	return std::move(state);
 }
 
@@ -72,9 +95,13 @@ unique_ptr<LocalSinkState> PhysicalCreateHNSWIndex::GetLocalSinkState(ExecutionC
 
 SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChunk &chunk,
                                              OperatorSinkInput &input) const {
-	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
+
 	auto &lstate = input.local_state.Cast<CreateHNSWIndexLocalState>();
-	auto &index = *gstate.global_index;
+	lstate.collection->Append(lstate.append_state, chunk);
+	return SinkResultType::NEED_MORE_INPUT;
+
+	//auto &index = *gstate.global_index;
+	/*
 
 	if (lstate.thread_id == idx_t(-1)) {
 		lstate.thread_id = gstate.next_thread_id++;
@@ -88,8 +115,8 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 
 	// Construct the index
 	index.Construct(chunk, row_identifiers, lstate.thread_id);
-
-	return SinkResultType::NEED_MORE_INPUT;
+	*/
+	// return SinkResultType::NEED_MORE_INPUT;
 }
 
 //-------------------------------------------------------------
@@ -97,55 +124,170 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
 //-------------------------------------------------------------
 SinkCombineResultType PhysicalCreateHNSWIndex::Combine(ExecutionContext &context,
                                                        OperatorSinkCombineInput &input) const {
+	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
+	auto &lstate = input.local_state.Cast<CreateHNSWIndexLocalState>();
+
+	if(lstate.collection->Count() == 0) {
+		return SinkCombineResultType::FINISHED;
+	}
+
+	lock_guard<mutex> l(gstate.glock);
+	if (!gstate.collection) {
+		gstate.collection = std::move(lstate.collection);
+	} else {
+		gstate.collection->Combine(*lstate.collection);
+	}
+
 	return SinkCombineResultType::FINISHED;
 }
 
 //-------------------------------------------------------------
 // Finalize
 //-------------------------------------------------------------
+
+class HNSWIndexConstructTask final : public ExecutorTask {
+public:
+	HNSWIndexConstructTask(shared_ptr<Event> event_p, ClientContext &context, CreateHNSWIndexGlobalState &gstate_p,
+	                       size_t thread_id_p)
+	    : ExecutorTask(context, std::move(event_p)),
+			context(context), gstate(gstate_p), thread_id(thread_id_p), local_scan_state() {
+
+		// TODO: Maybe copy if parallel
+		// gstate.collection->InitializeScan(gstate.scan_state, ColumnDataScanProperties::ALLOW_ZERO_COPY);
+		gstate.collection->InitializeScanChunk(scan_chunk);
+
+	}
+
+	TaskExecutionResult ExecuteTask(TaskExecutionMode mode) override {
+
+		auto &index = gstate.global_index->index;
+		auto &scan_state = gstate.scan_state;
+		auto &collection = gstate.collection;
+
+		const auto array_size = ArrayType::GetSize(scan_chunk.data[0].GetType());
+
+		while (collection->Scan(scan_state, local_scan_state, scan_chunk)) {
+
+			// TODO: Dont flatten
+			scan_chunk.Flatten();
+
+			const auto count = scan_chunk.size();
+			auto &vec_vec = scan_chunk.data[0];
+			auto &data_vec = ArrayVector::GetEntry(vec_vec);
+			auto &rowid_vec = scan_chunk.data[1];
+
+			const auto data_ptr = FlatVector::GetData<float>(data_vec);
+			const auto rowid_ptr = FlatVector::GetData<row_t>(rowid_vec);
+
+			for(idx_t i = 0; i < count; i++) {
+				const auto result = index.add(rowid_ptr[i], data_ptr + (i * array_size), thread_id);
+				if (!result) {
+					executor.PushError(ErrorData(result.error.what()));
+					return TaskExecutionResult::TASK_ERROR;
+				}
+			}
+		}
+
+		// Finish task!
+		event->FinishTask();
+		return TaskExecutionResult::TASK_FINISHED;
+	}
+private:
+	ClientContext &context;
+	CreateHNSWIndexGlobalState &gstate;
+	size_t thread_id;
+
+	DataChunk scan_chunk;
+	ColumnDataLocalScanState local_scan_state;
+};
+
+class HNSWIndexConstructionEvent final : public BasePipelineEvent {
+public:
+	HNSWIndexConstructionEvent(CreateHNSWIndexGlobalState &gstate_p, Pipeline &pipeline_p,
+		CreateIndexInfo &info_p, const vector<column_t> &storage_ids_p, DuckTableEntry &table_p)
+		: BasePipelineEvent(pipeline_p), gstate(gstate_p), info(info_p), storage_ids(storage_ids_p), table(table_p){
+	}
+
+	CreateHNSWIndexGlobalState &gstate;
+	CreateIndexInfo &info;
+	const vector<column_t> &storage_ids;
+	DuckTableEntry &table;
+
+public:
+	void Schedule() override {
+		auto &context = pipeline->GetClientContext();
+
+		// Schedule tasks equal to the number of threads, which will construct the index
+		auto &ts = TaskScheduler::GetScheduler(context);
+		const auto num_threads = NumericCast<size_t>(ts.NumberOfThreads());
+
+		vector<shared_ptr<Task>> construct_tasks;
+		for (size_t tnum = 0; tnum < num_threads; tnum++) {
+			construct_tasks.push_back(make_uniq<HNSWIndexConstructTask>(shared_from_this(), context, gstate, tnum));
+		}
+		SetTasks(std::move(construct_tasks));
+	}
+
+	void FinishEvent() override {
+
+		// Mark the index as dirty, update its count
+		gstate.global_index->SetDirty();
+		gstate.global_index->SyncSize();
+
+		auto &storage = table.GetStorage();
+
+		// If not in memory, persist the index to disk
+		if (!storage.db.GetStorageManager().InMemory()) {
+			// Finalize the index
+			gstate.global_index->PersistToDisk();
+		}
+
+		if (!storage.IsRoot()) {
+			throw TransactionException("Cannot create index on non-root transaction");
+		}
+
+		// Create the index entry in the catalog
+		auto &schema = table.schema;
+		info.column_ids = storage_ids;
+		const auto index_entry = schema.CreateIndex(*gstate.context, info, table).get();
+		if (!index_entry) {
+			D_ASSERT(info.on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT);
+			// index already exists, but error ignored because of IF NOT EXISTS
+			//return SinkFinalizeType::READY;
+			return;
+		}
+
+		// Get the entry as a DuckIndexEntry
+		auto &duck_index = index_entry->Cast<DuckIndexEntry>();
+		duck_index.initial_index_size = gstate.global_index->Cast<BoundIndex>().GetInMemorySize();
+		duck_index.info = make_uniq<IndexDataTableInfo>(storage.GetDataTableInfo(), duck_index.name);
+		for (auto &parsed_expr : info.parsed_expressions) {
+			duck_index.parsed_expressions.push_back(parsed_expr->Copy());
+		}
+
+		// Finally add it to storage
+		storage.AddIndex(std::move(gstate.global_index));
+	}
+};
+
 SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &event, ClientContext &context,
                                                    OperatorSinkFinalizeInput &input) const {
 
-	// Get the global index we created
+	// Get the global collection we've been appending to
 	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
+	auto &collection = gstate.collection;
 
-	// Vacuum excess memory and verify
-	// gstate.global_index->Vacuum();
-	// D_ASSERT(!state.global_index->VerifyAndToString(true).empty());
 
-	// Check that the table hasnt been altered in the meantime
-	auto &storage = table.GetStorage();
+	// Reserve the index size
+	auto &index = gstate.global_index->index;
+	index.reserve(collection->Count());
 
-	// If not in memory, persist the index to disk
-	if (!storage.db.GetStorageManager().InMemory()) {
-		// Finalize the index
-		gstate.global_index->PersistToDisk();
-	}
+	// Initialize a parallel scan for the index construction
+	collection->InitializeScan(gstate.scan_state , ColumnDataScanProperties::ALLOW_ZERO_COPY);
 
-	if (!storage.IsRoot()) {
-		throw TransactionException("Cannot create index on non-root transaction");
-	}
-
-	// Create the index entry in the catalog
-	auto &schema = table.schema;
-	info->column_ids = storage_ids;
-	auto index_entry = schema.CreateIndex(context, *info, table).get();
-	if (!index_entry) {
-		D_ASSERT(info->on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT);
-		// index already exists, but error ignored because of IF NOT EXISTS
-		return SinkFinalizeType::READY;
-	}
-
-	// Get the entry as a DuckIndexEntry
-	auto &index = index_entry->Cast<DuckIndexEntry>();
-	index.initial_index_size = gstate.global_index->Cast<BoundIndex>().GetInMemorySize();
-	index.info = make_uniq<IndexDataTableInfo>(storage.GetDataTableInfo(), index.name);
-	for (auto &parsed_expr : info->parsed_expressions) {
-		index.parsed_expressions.push_back(parsed_expr->Copy());
-	}
-
-	// Finally add it to storage
-	storage.AddIndex(std::move(gstate.global_index));
+	// Create a new event that will construct the index
+	auto new_event = make_shared_ptr<HNSWIndexConstructionEvent>(gstate, pipeline, *info, storage_ids, table);
+	event.InsertEvent(std::move(new_event));
 
 	return SinkFinalizeType::READY;
 }
