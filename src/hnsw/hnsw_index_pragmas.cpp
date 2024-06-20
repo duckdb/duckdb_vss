@@ -175,7 +175,7 @@ static void CompactIndexPragma(ClientContext &context, const FunctionParameters 
 	bool found_index = false;
 
 	auto &table_info = *storage.GetDataTableInfo();
-	table_info.GetIndexes().BindAndScan<HNSWIndex>(context, table_info,  [&](HNSWIndex &hnsw_index) {
+	table_info.GetIndexes().BindAndScan<HNSWIndex>(context, table_info, [&](HNSWIndex &hnsw_index) {
 		if (index_entry.name == index_name) {
 			hnsw_index.Compact();
 			found_index = true;

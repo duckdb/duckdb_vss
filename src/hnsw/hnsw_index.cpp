@@ -306,10 +306,10 @@ unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t 
 	auto ef_search = index.expansion_search();
 
 	Value hnsw_ef_search_opt;
-	if(context.TryGetCurrentSetting("hnsw_ef_search", hnsw_ef_search_opt)) {
-		if(!hnsw_ef_search_opt.IsNull() && hnsw_ef_search_opt.type() == LogicalType::BIGINT) {
+	if (context.TryGetCurrentSetting("hnsw_ef_search", hnsw_ef_search_opt)) {
+		if (!hnsw_ef_search_opt.IsNull() && hnsw_ef_search_opt.type() == LogicalType::BIGINT) {
 			auto val = hnsw_ef_search_opt.GetValue<int64_t>();
-			if(val > 0) {
+			if (val > 0) {
 				ef_search = static_cast<idx_t>(val);
 			}
 		}
