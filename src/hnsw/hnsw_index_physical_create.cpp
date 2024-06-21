@@ -124,11 +124,8 @@ class HNSWIndexConstructTask final : public ExecutorTask {
 public:
 	HNSWIndexConstructTask(shared_ptr<Event> event_p, ClientContext &context, CreateHNSWIndexGlobalState &gstate_p,
 	                       size_t thread_id_p)
-	    : ExecutorTask(context, std::move(event_p)), context(context), gstate(gstate_p), thread_id(thread_id_p),
-	      local_scan_state() {
-
-		// TODO: Maybe copy if parallel
-		// gstate.collection->InitializeScan(gstate.scan_state, ColumnDataScanProperties::ALLOW_ZERO_COPY);
+	    : ExecutorTask(context, std::move(event_p)), gstate(gstate_p), thread_id(thread_id_p), local_scan_state() {
+		// Initialize the scan chunk
 		gstate.collection->InitializeScanChunk(scan_chunk);
 	}
 
@@ -142,23 +139,48 @@ public:
 
 		while (collection->Scan(scan_state, local_scan_state, scan_chunk)) {
 
-			// TODO: Dont flatten
-			scan_chunk.Flatten();
-
 			const auto count = scan_chunk.size();
 			auto &vec_vec = scan_chunk.data[0];
 			auto &data_vec = ArrayVector::GetEntry(vec_vec);
 			auto &rowid_vec = scan_chunk.data[1];
 
-			const auto data_ptr = FlatVector::GetData<float>(data_vec);
-			const auto rowid_ptr = FlatVector::GetData<row_t>(rowid_vec);
+			UnifiedVectorFormat vec_format;
+			UnifiedVectorFormat data_format;
+			UnifiedVectorFormat rowid_format;
+
+			vec_vec.ToUnifiedFormat(count, vec_format);
+			data_vec.ToUnifiedFormat(count * array_size, data_format);
+			rowid_vec.ToUnifiedFormat(count, rowid_format);
+
+			const auto row_ptr = UnifiedVectorFormat::GetData<row_t>(rowid_format);
+			const auto data_ptr = UnifiedVectorFormat::GetData<float>(data_format);
 
 			for (idx_t i = 0; i < count; i++) {
-				const auto result = index.add(rowid_ptr[i], data_ptr + (i * array_size), thread_id);
+				const auto vec_idx = vec_format.sel->get_index(i);
+				const auto row_idx = rowid_format.sel->get_index(i);
+
+				// Check for NULL values
+				const auto vec_valid = vec_format.validity.RowIsValid(vec_idx);
+				const auto rowid_valid = rowid_format.validity.RowIsValid(row_idx);
+				if (!vec_valid || !rowid_valid) {
+					executor.PushError(
+					    ErrorData("Invalid data in HNSW index construction: Cannot construct index with NULL values."));
+					return TaskExecutionResult::TASK_ERROR;
+				}
+
+				// Add the vector to the index
+				const auto result = index.add(row_ptr[row_idx], data_ptr + (vec_idx * array_size), thread_id);
+
+				// Check for errors
 				if (!result) {
 					executor.PushError(ErrorData(result.error.what()));
 					return TaskExecutionResult::TASK_ERROR;
 				}
+			}
+
+			if (mode == TaskExecutionMode::PROCESS_PARTIAL) {
+				// yield!
+				return TaskExecutionResult::TASK_NOT_FINISHED;
 			}
 		}
 
@@ -168,7 +190,6 @@ public:
 	}
 
 private:
-	ClientContext &context;
 	CreateHNSWIndexGlobalState &gstate;
 	size_t thread_id;
 
