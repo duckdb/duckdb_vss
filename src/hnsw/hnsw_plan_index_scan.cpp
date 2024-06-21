@@ -155,8 +155,7 @@ public:
 			}
 
 			// Create the bind data for this index
-			bind_data =
-				make_uniq<HNSWIndexScanBindData>(duck_table, index_entry, top_n.limit, std::move(query_vector));
+			bind_data = make_uniq<HNSWIndexScanBindData>(duck_table, index_entry, top_n.limit, std::move(query_vector));
 			return true;
 		});
 
@@ -173,10 +172,9 @@ public:
 		get.estimated_cardinality = cardinality->estimated_cardinality;
 		get.bind_data = std::move(bind_data);
 
-
 		// Remove the distance function from the projection
 		// projection.expressions.erase(projection.expressions.begin() + static_cast<ptrdiff_t>(projection_index));
-		//top_n.expressions
+		// top_n.expressions
 
 		// Remove the TopN operator
 		plan = std::move(top_n.children[0]);
@@ -194,18 +192,19 @@ public:
 	}
 
 	static void MergeProjections(unique_ptr<LogicalOperator> &plan) {
-		if(plan->type == LogicalOperatorType::LOGICAL_PROJECTION) {
-			if(plan->children[0]->type == LogicalOperatorType::LOGICAL_PROJECTION) {
+		if (plan->type == LogicalOperatorType::LOGICAL_PROJECTION) {
+			if (plan->children[0]->type == LogicalOperatorType::LOGICAL_PROJECTION) {
 				auto &child = plan->children[0];
 
-				if(child->children[0]->type == LogicalOperatorType::LOGICAL_GET && child->children[0]->Cast<LogicalGet>().function.name == "hnsw_index_scan") {
+				if (child->children[0]->type == LogicalOperatorType::LOGICAL_GET &&
+				    child->children[0]->Cast<LogicalGet>().function.name == "hnsw_index_scan") {
 					auto &parent_projection = plan->Cast<LogicalProjection>();
 					auto &child_projection = child->Cast<LogicalProjection>();
 
 					column_binding_set_t referenced_bindings;
-					for(auto &expr : parent_projection.expressions) {
-						ExpressionIterator::EnumerateExpression(expr, [&](Expression& expr_ref) {
-							if(expr_ref.type == ExpressionType::BOUND_COLUMN_REF) {
+					for (auto &expr : parent_projection.expressions) {
+						ExpressionIterator::EnumerateExpression(expr, [&](Expression &expr_ref) {
+							if (expr_ref.type == ExpressionType::BOUND_COLUMN_REF) {
 								auto &bound_column_ref = expr_ref.Cast<BoundColumnRefExpression>();
 								referenced_bindings.insert(bound_column_ref.binding);
 							}
@@ -213,11 +212,11 @@ public:
 					}
 
 					auto child_bindings = child_projection.GetColumnBindings();
-					for(idx_t i = 0; i < child_projection.expressions.size(); i++) {
+					for (idx_t i = 0; i < child_projection.expressions.size(); i++) {
 						auto &expr = child_projection.expressions[i];
 						auto &outgoing_binding = child_bindings[i];
 
-						if(referenced_bindings.find(outgoing_binding) == referenced_bindings.end()) {
+						if (referenced_bindings.find(outgoing_binding) == referenced_bindings.end()) {
 							// The binding is not referenced
 							// We can remove this expression. But positionality matters so just replace with int.
 							expr = make_uniq_base<Expression, BoundConstantExpression>(Value(LogicalType::TINYINT));
@@ -227,14 +226,14 @@ public:
 				}
 			}
 		}
-		for(auto &child : plan->children) {
+		for (auto &child : plan->children) {
 			MergeProjections(child);
 		}
 	}
 
 	static void Optimize(OptimizerExtensionInput &input, unique_ptr<LogicalOperator> &plan) {
 		auto did_use_hnsw_scan = OptimizeChildren(input.context, plan);
-		if(did_use_hnsw_scan) {
+		if (did_use_hnsw_scan) {
 			MergeProjections(plan);
 		}
 	}

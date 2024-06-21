@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "duckdb/execution/index/bound_index.hpp"
 #include "duckdb/execution/index/index_pointer.hpp"
 #include "duckdb/execution/index/fixed_size_allocator.hpp"
@@ -92,6 +91,13 @@ public:
 	string GetConstraintViolationMessage(VerifyExistenceType verify_type, idx_t failed_index,
 	                                     DataChunk &input) override {
 		return "Constraint violation in HNSW index";
+	}
+
+	void SetDirty() {
+		is_dirty = true;
+	}
+	void SyncSize() {
+		index_size = index.size();
 	}
 
 private:
