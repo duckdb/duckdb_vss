@@ -51,6 +51,8 @@ public:
 	bool ParallelSink() const override {
 		return true;
 	}
+
+	double GetSinkProgress(ClientContext &context, GlobalSinkState &gstate, double source_progress) const override;
 };
 
 } // namespace duckdb

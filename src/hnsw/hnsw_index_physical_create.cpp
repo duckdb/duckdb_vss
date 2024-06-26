@@ -43,6 +43,11 @@ public:
 
 	// Parallel scan state
 	ColumnDataParallelScanState scan_state;
+
+	// Track which phase we're in
+	atomic<bool> is_building = {false};
+	atomic<idx_t> loaded_count = {0};
+	atomic<idx_t> built_count = {0};
 };
 
 unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientContext &context) const {
@@ -90,7 +95,9 @@ SinkResultType PhysicalCreateHNSWIndex::Sink(ExecutionContext &context, DataChun
                                              OperatorSinkInput &input) const {
 
 	auto &lstate = input.local_state.Cast<CreateHNSWIndexLocalState>();
+	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
 	lstate.collection->Append(lstate.append_state, chunk);
+	gstate.loaded_count += chunk.size();
 	return SinkResultType::NEED_MORE_INPUT;
 }
 
@@ -177,6 +184,9 @@ public:
 					return TaskExecutionResult::TASK_ERROR;
 				}
 			}
+
+			// Update the built count
+			gstate.built_count += count;
 
 			if (mode == TaskExecutionMode::PROCESS_PARTIAL) {
 				// yield!
@@ -273,6 +283,9 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	auto &gstate = input.global_state.Cast<CreateHNSWIndexGlobalState>();
 	auto &collection = gstate.collection;
 
+	// Move on to the next phase
+	gstate.is_building = true;
+
 	// Reserve the index size
 	auto &index = gstate.global_index->index;
 	index.reserve(collection->Count());
@@ -285,6 +298,19 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	event.InsertEvent(std::move(new_event));
 
 	return SinkFinalizeType::READY;
+}
+
+double PhysicalCreateHNSWIndex::GetSinkProgress(ClientContext &context, GlobalSinkState &gstate,
+                                                double source_progress) const {
+	// The "source_progress" is not relevant for CREATE INDEX statements
+	const auto &state = gstate.Cast<CreateHNSWIndexGlobalState>();
+	// First half of the progress is appending to the collection
+	if (!state.is_building) {
+		return 50.0 *
+		       MinValue(1.0, static_cast<double>(state.loaded_count) / static_cast<double>(estimated_cardinality));
+	}
+	// Second half is actually building the index
+	return 50.0 + (50.0 * static_cast<double>(state.built_count) / static_cast<double>(state.loaded_count));
 }
 
 } // namespace duckdb
