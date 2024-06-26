@@ -7,6 +7,14 @@ set(EXTENSION_NAME ${TARGET_NAME}_extension)
 set(LOADABLE_EXTENSION_NAME ${TARGET_NAME}_loadable_extension)
 
 project(${TARGET_NAME})
+
+option(USE_SIMSIMD "Use SIMSIMD library to sacrifice portability for vectorized search" OFF)
+if(USE_SIMSIMD)
+    add_definitions(-DDUCKDB_USEARCH_USE_SIMSIMD=1)
+else()
+    add_definitions(-DDUCKDB_USEARCH_USE_SIMSIMD=0)
+endif()
+
 include_directories(src/include)
 
 set(EXTENSION_SOURCES src/vss_extension.cpp)
