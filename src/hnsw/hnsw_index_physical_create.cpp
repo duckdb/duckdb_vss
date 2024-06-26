@@ -287,8 +287,9 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	gstate.is_building = true;
 
 	// Reserve the index size
+	auto &ts = TaskScheduler::GetScheduler(context);
 	auto &index = gstate.global_index->index;
-	index.reserve(collection->Count());
+	index.reserve({static_cast<size_t>(collection->Count()), static_cast<size_t>(ts.NumberOfThreads())});
 
 	// Initialize a parallel scan for the index construction
 	collection->InitializeScan(gstate.scan_state, ColumnDataScanProperties::ALLOW_ZERO_COPY);
