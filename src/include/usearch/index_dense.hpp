@@ -726,7 +726,7 @@ class index_dense_gt {
         cluster_config.thread = lock.thread_id;
         cluster_config.expansion = config_.expansion_search;
         metric_proxy_t metric{*this};
-        auto &free_key_ = this->free_key;
+        auto &free_key_ = this->free_key_;
         auto allow = [&free_key_](member_cref_t const& member) noexcept {
             return member.key != free_key_;
         };
