@@ -12,6 +12,7 @@ public:
 		RegisterIndexPragmas(db);
 		RegisterPlanIndexScan(db);
 		RegisterPlanIndexCreate(db);
+		RegisterMacros(db);
 	}
 
 private:
@@ -20,6 +21,7 @@ private:
 	static void RegisterIndexPragmas(DatabaseInstance &db);
 	static void RegisterPlanIndexScan(DatabaseInstance &db);
 	static void RegisterPlanIndexCreate(DatabaseInstance &db);
+	static void RegisterMacros(DatabaseInstance &db);
 };
 
 } // namespace duckdb

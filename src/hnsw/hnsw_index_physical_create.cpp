@@ -130,8 +130,9 @@ SinkCombineResultType PhysicalCreateHNSWIndex::Combine(ExecutionContext &context
 class HNSWIndexConstructTask final : public ExecutorTask {
 public:
 	HNSWIndexConstructTask(shared_ptr<Event> event_p, ClientContext &context, CreateHNSWIndexGlobalState &gstate_p,
-	                       size_t thread_id_p)
-	    : ExecutorTask(context, std::move(event_p)), gstate(gstate_p), thread_id(thread_id_p), local_scan_state() {
+	                       size_t thread_id_p, const PhysicalCreateHNSWIndex &op_p)
+	    : ExecutorTask(context, std::move(event_p), op_p), gstate(gstate_p), thread_id(thread_id_p),
+	      local_scan_state() {
 		// Initialize the scan chunk
 		gstate.collection->InitializeScanChunk(scan_chunk);
 	}
@@ -209,11 +210,14 @@ private:
 
 class HNSWIndexConstructionEvent final : public BasePipelineEvent {
 public:
-	HNSWIndexConstructionEvent(CreateHNSWIndexGlobalState &gstate_p, Pipeline &pipeline_p, CreateIndexInfo &info_p,
-	                           const vector<column_t> &storage_ids_p, DuckTableEntry &table_p)
-	    : BasePipelineEvent(pipeline_p), gstate(gstate_p), info(info_p), storage_ids(storage_ids_p), table(table_p) {
+	HNSWIndexConstructionEvent(const PhysicalCreateHNSWIndex &op_p, CreateHNSWIndexGlobalState &gstate_p,
+	                           Pipeline &pipeline_p, CreateIndexInfo &info_p, const vector<column_t> &storage_ids_p,
+	                           DuckTableEntry &table_p)
+	    : BasePipelineEvent(pipeline_p), op(op_p), gstate(gstate_p), info(info_p), storage_ids(storage_ids_p),
+	      table(table_p) {
 	}
 
+	const PhysicalCreateHNSWIndex &op;
 	CreateHNSWIndexGlobalState &gstate;
 	CreateIndexInfo &info;
 	const vector<column_t> &storage_ids;
@@ -229,7 +233,7 @@ public:
 
 		vector<shared_ptr<Task>> construct_tasks;
 		for (size_t tnum = 0; tnum < num_threads; tnum++) {
-			construct_tasks.push_back(make_uniq<HNSWIndexConstructTask>(shared_from_this(), context, gstate, tnum));
+			construct_tasks.push_back(make_uniq<HNSWIndexConstructTask>(shared_from_this(), context, gstate, tnum, op));
 		}
 		SetTasks(std::move(construct_tasks));
 	}
@@ -295,7 +299,7 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	collection->InitializeScan(gstate.scan_state, ColumnDataScanProperties::ALLOW_ZERO_COPY);
 
 	// Create a new event that will construct the index
-	auto new_event = make_shared_ptr<HNSWIndexConstructionEvent>(gstate, pipeline, *info, storage_ids, table);
+	auto new_event = make_shared_ptr<HNSWIndexConstructionEvent>(*this, gstate, pipeline, *info, storage_ids, table);
 	event.InsertEvent(std::move(new_event));
 
 	return SinkFinalizeType::READY;
