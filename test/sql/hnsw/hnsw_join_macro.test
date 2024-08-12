@@ -1,0 +1,19 @@
+require vss
+
+statement ok
+CREATE TABLE t1 (id int, vec FLOAT[3]);
+
+statement ok
+INSERT INTO t1 SELECT row_number() over (), array_value(a,b,c) FROM range(1,10) ra(a), range(1,10) rb(b), range(1,10) rc(c);
+
+statement ok
+CREATE TABLE s(s_vec FLOAT[3]);
+
+statement ok
+INSERT INTO s VALUES ([5,5,5]), ([1,1,1]);
+
+query III
+SELECT len(matches) = 3 FROM s, vss_match(t1, s_vec, vec, 3) as res;
+----
+true
+true
