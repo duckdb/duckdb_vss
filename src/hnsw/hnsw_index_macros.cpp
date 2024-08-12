@@ -78,7 +78,7 @@ FROM
 // Register
 //-------------------------------------------------------------------------
 static void RegisterTableMacro(DatabaseInstance &db, const string &name, const string &query,
-	const vector<string> &params, const child_list_t<Value> &named_params) {
+                               const vector<string> &params, const child_list_t<Value> &named_params) {
 
 	Parser parser;
 	parser.ParseQuery(query);
@@ -106,14 +106,11 @@ static void RegisterTableMacro(DatabaseInstance &db, const string &name, const s
 
 void HNSWModule::RegisterMacros(DatabaseInstance &db) {
 
-	RegisterTableMacro(db, "vss_join", VSS_JOIN_MACRO,
-		{"left_table", "right_table", "left_col", "right_col", "k"},
-		{{"metric", Value("l2sq")}});
+	RegisterTableMacro(db, "vss_join", VSS_JOIN_MACRO, {"left_table", "right_table", "left_col", "right_col", "k"},
+	                   {{"metric", Value("l2sq")}});
 
-	RegisterTableMacro(db, "vss_match", VSS_MATCH_MACRO,
-		{"right_table", "left_col", "right_col", "k"},
-		{{"metric", Value("l2sq")}});
-
+	RegisterTableMacro(db, "vss_match", VSS_MATCH_MACRO, {"right_table", "left_col", "right_col", "k"},
+	                   {{"metric", Value("l2sq")}});
 }
 
 } // namespace duckdb

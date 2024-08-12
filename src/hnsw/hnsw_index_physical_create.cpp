@@ -131,7 +131,8 @@ class HNSWIndexConstructTask final : public ExecutorTask {
 public:
 	HNSWIndexConstructTask(shared_ptr<Event> event_p, ClientContext &context, CreateHNSWIndexGlobalState &gstate_p,
 	                       size_t thread_id_p, const PhysicalCreateHNSWIndex &op_p)
-	    : ExecutorTask(context, std::move(event_p), op_p), gstate(gstate_p), thread_id(thread_id_p), local_scan_state() {
+	    : ExecutorTask(context, std::move(event_p), op_p), gstate(gstate_p), thread_id(thread_id_p),
+	      local_scan_state() {
 		// Initialize the scan chunk
 		gstate.collection->InitializeScanChunk(scan_chunk);
 	}
@@ -209,9 +210,11 @@ private:
 
 class HNSWIndexConstructionEvent final : public BasePipelineEvent {
 public:
-	HNSWIndexConstructionEvent(const PhysicalCreateHNSWIndex &op_p, CreateHNSWIndexGlobalState &gstate_p, Pipeline &pipeline_p, CreateIndexInfo &info_p,
-	                           const vector<column_t> &storage_ids_p, DuckTableEntry &table_p)
-	    : BasePipelineEvent(pipeline_p), op(op_p), gstate(gstate_p), info(info_p), storage_ids(storage_ids_p), table(table_p) {
+	HNSWIndexConstructionEvent(const PhysicalCreateHNSWIndex &op_p, CreateHNSWIndexGlobalState &gstate_p,
+	                           Pipeline &pipeline_p, CreateIndexInfo &info_p, const vector<column_t> &storage_ids_p,
+	                           DuckTableEntry &table_p)
+	    : BasePipelineEvent(pipeline_p), op(op_p), gstate(gstate_p), info(info_p), storage_ids(storage_ids_p),
+	      table(table_p) {
 	}
 
 	const PhysicalCreateHNSWIndex &op;
