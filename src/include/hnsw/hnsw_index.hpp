@@ -72,7 +72,7 @@ public:
 	//! Insert a chunk of entries into the index
 	ErrorData Insert(IndexLock &lock, DataChunk &data, Vector &row_ids) override;
 
-	IndexStorageInfo GetStorageInfo(const bool get_buffers) override;
+	IndexStorageInfo GetStorageInfo(const case_insensitive_map_t<Value> &options, const bool to_wal) override;
 	idx_t GetInMemorySize(IndexLock &state) override;
 
 	//! Merge another index into this index. The lock obtained from InitializeLock must be held, and the other
@@ -85,8 +85,10 @@ public:
 	//! Performs constraint checking for a chunk of input data
 	void CheckConstraintsForChunk(DataChunk &input, ConflictManager &conflict_manager) override;
 
-	//! Returns the string representation of the HNSWIndex, or only traverses and verifies the index
+	//! Returns the string representation of the HNSWIndex, or only traverses and verifies the index.
 	string VerifyAndToString(IndexLock &state, const bool only_verify) override;
+	//! Ensures that the node allocation counts match the node counts.
+	void VerifyAllocations(IndexLock &state) override;
 
 	string GetConstraintViolationMessage(VerifyExistenceType verify_type, idx_t failed_index,
 	                                     DataChunk &input) override {
