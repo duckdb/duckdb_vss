@@ -34,6 +34,9 @@ PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatal
 //-------------------------------------------------------------
 class CreateHNSWIndexGlobalState final : public GlobalSinkState {
 public:
+	CreateHNSWIndexGlobalState(const PhysicalOperator &op_p) : op(op_p) {}
+
+	const PhysicalOperator &op;
 	//! Global index to be added to the table
 	unique_ptr<HNSWIndex> global_index;
 
@@ -51,7 +54,7 @@ public:
 };
 
 unique_ptr<GlobalSinkState> PhysicalCreateHNSWIndex::GetGlobalSinkState(ClientContext &context) const {
-	auto gstate = make_uniq<CreateHNSWIndexGlobalState>();
+	auto gstate = make_uniq<CreateHNSWIndexGlobalState>(*this);
 
 	vector<LogicalType> data_types = {unbound_expressions[0]->return_type, LogicalType::ROW_TYPE};
 	gstate->collection = make_uniq<ColumnDataCollection>(BufferManager::GetBufferManager(context), data_types);

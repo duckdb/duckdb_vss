@@ -490,7 +490,7 @@ void HNSWIndex::PersistToDisk() {
 	is_dirty = false;
 }
 
-IndexStorageInfo HNSWIndex::GetStorageInfo(const bool get_buffers) {
+IndexStorageInfo HNSWIndex::GetStorageInfo(const case_insensitive_map_t<Value> &options, const bool to_wal) {
 
 	PersistToDisk();
 
@@ -498,7 +498,7 @@ IndexStorageInfo HNSWIndex::GetStorageInfo(const bool get_buffers) {
 	info.name = name;
 	info.root = root_block_ptr.Get();
 
-	if (!get_buffers) {
+	if (!to_wal) {
 		// use the partial block manager to serialize all allocator data
 		auto &block_manager = table_io_manager.GetIndexBlockManager();
 		PartialBlockManager partial_block_manager(block_manager, PartialBlockType::FULL_CHECKPOINT);
@@ -530,6 +530,10 @@ void HNSWIndex::CheckConstraintsForChunk(DataChunk &input, ConflictManager &conf
 
 string HNSWIndex::VerifyAndToString(IndexLock &state, const bool only_verify) {
 	throw NotImplementedException("HNSWIndex::VerifyAndToString() not implemented");
+}
+
+void HNSWIndex::VerifyAllocations(IndexLock &state) {
+	throw NotImplementedException("HNSWIndex::VerifyAllocations() not implemented");
 }
 
 //------------------------------------------------------------------------------
