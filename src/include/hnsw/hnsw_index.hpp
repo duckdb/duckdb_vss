@@ -45,7 +45,6 @@ public:
 	idx_t Scan(IndexScanState &state, Vector &result);
 
 	idx_t GetVectorSize() const;
-	static bool IsDistanceFunction(const string &distance_function_name);
 	bool MatchesDistanceFunction(const string &distance_function_name) const;
 	string GetMetric() const;
 
@@ -101,6 +100,8 @@ public:
 	void SyncSize() {
 		index_size = index.size();
 	}
+
+	bool CanRewriteIndexExpression(LogicalGet &get, Expression &column_ref) const;
 
 private:
 	bool is_dirty = false;

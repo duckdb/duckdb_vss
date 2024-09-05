@@ -4,6 +4,7 @@
 #include "duckdb/common/serializer/binary_serializer.hpp"
 #include "duckdb/execution/index/fixed_size_allocator.hpp"
 #include "duckdb/storage/table/scan_state.hpp"
+#include "duckdb/planner/operator/logical_get.hpp"
 #include "hnsw/hnsw.hpp"
 
 namespace duckdb {
@@ -227,23 +228,19 @@ string HNSWIndex::GetMetric() const {
 	}
 }
 
-bool HNSWIndex::IsDistanceFunction(const string &distance_function_name) {
-	auto accepted_functions = {"array_distance", "array_cosine_similarity", "array_inner_product"};
-	return std::find(accepted_functions.begin(), accepted_functions.end(), distance_function_name) !=
-	       accepted_functions.end();
-}
-
-bool HNSWIndex::MatchesDistanceFunction(const string &distance_function_name) const {
-	if (distance_function_name == "array_distance" &&
+bool HNSWIndex::MatchesDistanceFunction(const string &name) const {
+	if ((name == "array_distance" || name == "<->") &&
 	    index.metric().metric_kind() == unum::usearch::metric_kind_t::l2sq_k) {
+		// Note: usearch uses l2sq, for their metric, but its functionally equivalent to sqrt(l2sq)
 		return true;
 	}
-	if (distance_function_name == "array_cosine_similarity" &&
+	if ((name == "array_cosine_distance" || name == "<=>") &&
 	    index.metric().metric_kind() == unum::usearch::metric_kind_t::cos_k) {
 		return true;
 	}
-	if (distance_function_name == "array_inner_product" &&
+	if ((name == "array_negative_inner_product" || name == "<#>") &&
 	    index.metric().metric_kind() == unum::usearch::metric_kind_t::ip_k) {
+		// Note: usearch uses (1.0 - ip) for their metric, but its functionally equivalent to (-ip)
 		return true;
 	}
 	return false;
@@ -534,6 +531,40 @@ string HNSWIndex::VerifyAndToString(IndexLock &state, const bool only_verify) {
 
 void HNSWIndex::VerifyAllocations(IndexLock &state) {
 	throw NotImplementedException("HNSWIndex::VerifyAllocations() not implemented");
+}
+
+//------------------------------------------------------------------------------
+// Can rewrite index expression?
+//------------------------------------------------------------------------------
+static void RewriteIndexExpression(const Index &index, LogicalGet &get, Expression &expr, bool &rewrite_possible,
+                                   bool &any_column_ref) {
+	if (expr.type == ExpressionType::BOUND_COLUMN_REF) {
+		any_column_ref = true;
+		auto &bound_colref = expr.Cast<BoundColumnRefExpression>();
+		// bound column ref: rewrite to fit in the current set of bound column ids
+		bound_colref.binding.table_index = get.table_index;
+		auto &column_ids = index.GetColumnIds();
+		auto &get_column_ids = get.GetColumnIds();
+		column_t referenced_column = column_ids[bound_colref.binding.column_index];
+		// search for the referenced column in the set of column_ids
+		for (idx_t i = 0; i < get_column_ids.size(); i++) {
+			if (get_column_ids[i] == referenced_column) {
+				bound_colref.binding.column_index = i;
+				return;
+			}
+		}
+		// column id not found in bound columns in the LogicalGet: rewrite not possible
+		rewrite_possible = false;
+	}
+	ExpressionIterator::EnumerateChildren(
+	    expr, [&](Expression &child) { RewriteIndexExpression(index, get, child, rewrite_possible, any_column_ref); });
+}
+
+bool HNSWIndex::CanRewriteIndexExpression(LogicalGet &get, Expression &column_ref) const {
+	bool rewrite_possible = true;
+	bool any_column_ref = false;
+	RewriteIndexExpression(*this, get, column_ref, rewrite_possible, any_column_ref);
+	return any_column_ref && rewrite_possible;
 }
 
 //------------------------------------------------------------------------------
