@@ -14,13 +14,13 @@
 
 namespace duckdb {
 
-PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatalogEntry &table,
+PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatalogEntry &table_p,
                                                  const vector<column_t> &column_ids, unique_ptr<CreateIndexInfo> info,
                                                  vector<unique_ptr<Expression>> unbound_expressions,
                                                  idx_t estimated_cardinality)
     // Declare this operators as a EXTENSION operator
     : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, estimated_cardinality),
-      table(table.Cast<DuckTableEntry>()), info(std::move(info)), unbound_expressions(std::move(unbound_expressions)),
+      table(table_p.Cast<DuckTableEntry>()), info(std::move(info)), unbound_expressions(std::move(unbound_expressions)),
       sorted(false) {
 
 	// convert virtual column ids to storage column ids
@@ -34,7 +34,8 @@ PhysicalCreateHNSWIndex::PhysicalCreateHNSWIndex(LogicalOperator &op, TableCatal
 //-------------------------------------------------------------
 class CreateHNSWIndexGlobalState final : public GlobalSinkState {
 public:
-	CreateHNSWIndexGlobalState(const PhysicalOperator &op_p) : op(op_p) {}
+	CreateHNSWIndexGlobalState(const PhysicalOperator &op_p) : op(op_p) {
+	}
 
 	const PhysicalOperator &op;
 	//! Global index to be added to the table
@@ -262,21 +263,17 @@ public:
 		// Create the index entry in the catalog
 		auto &schema = table.schema;
 		info.column_ids = storage_ids;
-		const auto index_entry = schema.CreateIndex(*gstate.context, info, table).get();
-		if (!index_entry) {
-			D_ASSERT(info.on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT);
-			// index already exists, but error ignored because of IF NOT EXISTS
-			// return SinkFinalizeType::READY;
-			return;
+
+		if (schema.GetEntry(schema.GetCatalogTransaction(*gstate.context), CatalogType::INDEX_ENTRY, info.index_name)) {
+			if (info.on_conflict != OnCreateConflict::IGNORE_ON_CONFLICT) {
+				throw CatalogException("Index with name \"%s\" already exists", info.index_name);
+			}
 		}
 
-		// Get the entry as a DuckIndexEntry
+		const auto index_entry = schema.CreateIndex(schema.GetCatalogTransaction(*gstate.context), info, table).get();
+		D_ASSERT(index_entry);
 		auto &duck_index = index_entry->Cast<DuckIndexEntry>();
 		duck_index.initial_index_size = gstate.global_index->Cast<BoundIndex>().GetInMemorySize();
-		duck_index.info = make_uniq<IndexDataTableInfo>(storage.GetDataTableInfo(), duck_index.name);
-		for (auto &parsed_expr : info.parsed_expressions) {
-			duck_index.parsed_expressions.push_back(parsed_expr->Copy());
-		}
 
 		// Finally add it to storage
 		storage.AddIndex(std::move(gstate.global_index));

@@ -1,0 +1,31 @@
+require vss
+
+# Test that we rewrite (1 - array_cosine_similarity) to array_cosine_distance
+
+statement ok
+CREATE TABLE t1 (v FLOAT[3]);
+
+statement ok
+INSERT INTO t1 VALUES ([0.8, 0.8, 0.8]);
+
+query II
+EXPLAIN SELECT 1.0 - array_cosine_similarity(v, [0.2,0.2,0.2]::FLOAT[3]) FROM t1;
+----
+physical_plan	<REGEX>:.*array_cosine_distance.*
+
+statement ok
+pragma disable_optimizer;
+
+query II
+EXPLAIN SELECT 1.0 - array_cosine_similarity(v, [0.2,0.2,0.2]::FLOAT[3]) FROM t1;
+----
+physical_plan	<REGEX>:.*array_cosine_similarity.*
+
+query I rowsort RES
+SELECT 1.0 - array_cosine_similarity(v, [0.2,0.2,0.2]::FLOAT[3]) FROM t1;
+
+statement ok
+pragma enable_optimizer;
+
+query I rowsort RES
+SELECT 1.0 - array_cosine_similarity(v, [0.2,0.2,0.2]::FLOAT[3]) FROM t1;

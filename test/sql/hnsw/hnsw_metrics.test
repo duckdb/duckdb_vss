@@ -21,12 +21,12 @@ CREATE INDEX my_l2sq_idx ON t1 USING HNSW (vec) WITH (metric = 'l2sq');
 
 # Make sure we get the index scan plan on the index matching the distance measurement
 query II
-EXPLAIN SELECT array_inner_product(vec, [1,2,3]::FLOAT[3]) as x FROM t1 ORDER BY x LIMIT 3;
+EXPLAIN SELECT array_negative_inner_product(vec, [1,2,3]::FLOAT[3]) as x FROM t1 ORDER BY x LIMIT 3;
 ----
 physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*my_ip_idx.*
 
 query II
-EXPLAIN SELECT array_cosine_similarity(vec, [1,2,3]::FLOAT[3]) as x FROM t1 ORDER BY x LIMIT 3;
+EXPLAIN SELECT array_cosine_distance(vec, [1,2,3]::FLOAT[3]) as x FROM t1 ORDER BY x LIMIT 3;
 ----
 physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*my_cos_idx.*
 
