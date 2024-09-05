@@ -54,11 +54,11 @@ CREATE INDEX my_hnsw_cosine_index ON my_vector_table USING HNSW (vec) WITH (metr
 
 The following table shows the supported distance metrics and their corresponding DuckDB functions
 
-| Description | Metric | Function |
-| --- | --- | --- |
-| Euclidean distance | `l2sq` | `array_distance` |
-| Cosine similarity | `cosine` | `array_cosine_similarity` |
-| Inner product | `ip` | `array_inner_product` |
+| Description | Metric | Function                       |
+| --- | --- |--------------------------------|
+| Euclidean distance | `l2sq` | `array_distance`               |
+| Cosine similarity | `cosine` | `array_cosine_distance`        |
+| Inner product | `ip` | `array_negative_inner_product` |
 
 ## Inserts, Updates,  Deletes and Re-Compaction
 

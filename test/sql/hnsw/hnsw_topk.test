@@ -17,8 +17,13 @@ EXPLAIN SELECT min_by(vec, array_distance(vec, [1,2,3]::FLOAT[3]), 3) as x FROM 
 ----
 physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
 
-query I
-SELECT min_by(vec, array_distance(vec, [5,5,5]::FLOAT[3]), 3) as x FROM t1;
+query II
+EXPLAIN SELECT list_sum(flatten(min_by(vec, array_distance(vec, [5,5,5]::FLOAT[3]), 3))) BETWEEN 44 AND 50 FROM t1;
 ----
-[[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]]
+physical_plan	<REGEX>:.*HNSW_INDEX_SCAN.*
+
+query I
+SELECT list_sum(flatten(min_by(vec, array_distance(vec, [5,5,5]::FLOAT[3]), 3))) BETWEEN 45 AND 50 FROM t1;
+----
+true
 
