@@ -28,6 +28,7 @@ jobs:
     with:
       duckdb_version: main
       extension_name: vss
+      ci_tools_version: main
 
   duckdb-stable-deploy:
     name: Deploy extension binaries
