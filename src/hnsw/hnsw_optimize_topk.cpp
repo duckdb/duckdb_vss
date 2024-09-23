@@ -12,40 +12,13 @@
 #include "hnsw/hnsw_index.hpp"
 #include "hnsw/hnsw_index_scan.hpp"
 
+#include "aggregate_function_matcher.hpp"
+
 namespace duckdb {
 
 //------------------------------------------------------------------------------
 // Optimizer Helpers
 //------------------------------------------------------------------------------
-
-class AggregateFunctionExpressionMatcher : public ExpressionMatcher {
-public:
-	AggregateFunctionExpressionMatcher()
-	    : ExpressionMatcher(ExpressionClass::BOUND_AGGREGATE), policy(SetMatcher::Policy::INVALID) {
-	}
-	//! The matchers for the child expressions
-	vector<unique_ptr<ExpressionMatcher>> matchers;
-	//! The set matcher matching policy to use
-	SetMatcher::Policy policy;
-	//! The function name to match
-	unique_ptr<FunctionMatcher> function;
-
-	bool Match(Expression &expr_p, vector<reference<Expression>> &bindings) override;
-};
-
-bool AggregateFunctionExpressionMatcher::Match(Expression &expr_p, vector<reference<Expression>> &bindings) {
-	if (!ExpressionMatcher::Match(expr_p, bindings)) {
-		return false;
-	}
-	auto &expr = expr_p.Cast<BoundAggregateExpression>();
-	if (!FunctionMatcher::Match(function, expr.function.name)) {
-		return false;
-	}
-	if (!SetMatcher::Match(matchers, expr.children, bindings, policy)) {
-		return false;
-	}
-	return true;
-}
 
 static unique_ptr<Expression> CreateListOrderByExpr(ClientContext &context, unique_ptr<Expression> elem_expr,
                                                     unique_ptr<Expression> order_expr,

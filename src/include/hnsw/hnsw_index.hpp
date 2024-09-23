@@ -43,7 +43,6 @@ public:
 
 	unique_ptr<IndexScanState> InitializeScan(float *query_vector, idx_t limit, ClientContext &context);
 	idx_t Scan(IndexScanState &state, Vector &result);
-
 	idx_t GetVectorSize() const;
 	bool MatchesDistanceFunction(const string &distance_function_name) const;
 	string GetMetric() const;
