@@ -275,20 +275,24 @@ static bool MatchDistanceFunction(vector<reference<Expression>> &bindings, Expre
 }
 
 
+
 struct ProjectionMerger final : LogicalOperatorVisitor {
 	LogicalProjection *child_proj = nullptr;
 
 	void VisitOperator(LogicalOperator &op) override {
-		for(auto &child : op.children) {
-			while(child->type == LogicalOperatorType::LOGICAL_PROJECTION) {
-				child_proj = &child->Cast<LogicalProjection>();
-				VisitOperatorExpressions(op);
-				// Replace the child with its own child
-				child = std::move(child->children.back());
+		if(op.type == LogicalOperatorType::LOGICAL_PROJECTION || op.type == LogicalOperatorType::LOGICAL_AGGREGATE_AND_GROUP_BY) {
+			for(auto &child : op.children) {
+				while(child->type == LogicalOperatorType::LOGICAL_PROJECTION) {
+					child_proj = &child->Cast<LogicalProjection>();
+					VisitOperatorExpressions(op);
+					// Replace the child with its own child
+					D_ASSERT(child->children.size() == 1);
+					child = std::move(child->children.back());
+				}
 			}
+			// Visit the children
+			VisitOperatorChildren(op);
 		}
-		// Visit the children
-		VisitOperatorChildren(op);
 	}
 
 	void VisitExpression(unique_ptr<Expression> *expression) override {
