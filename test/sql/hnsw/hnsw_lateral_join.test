@@ -1,0 +1,27 @@
+require vss
+
+statement ok
+CREATE TABLE a (a_vec FLOAT[3], a_id INT);
+
+statement ok
+CREATE TABLE b (b_vec FLOAT[3], b_str VARCHAR);
+
+statement ok
+INSERT INTO a VALUES (ARRAY[1.0, 2.0, 3.0], 1), (ARRAY[4.0, 5.0, 6.0], 2);
+
+statement ok
+INSERT INTO b VALUES (ARRAY[4.0, 5.0, 6.0], 'b'), (ARRAY[1.0, 2.0, 3.0], 'a');
+
+# Start with simple case (no extra projections)
+#query IIIII
+#select * from a, lateral (select * from b order by array_distance(a.a_vec, b.b_vec) limit 1);
+#----
+
+statement ok
+CREATE INDEX my_idx ON a USING HNSW (a_vec);
+
+query IIIII rowsort
+select * from a, lateral (select *, a_id as id_dup from b order by array_distance(a.a_vec, b.b_vec) limit 1);
+----
+[1.0, 2.0, 3.0]	1	[1.0, 2.0, 3.0]	a	1
+[4.0, 5.0, 6.0]	2	[4.0, 5.0, 6.0]	b	2

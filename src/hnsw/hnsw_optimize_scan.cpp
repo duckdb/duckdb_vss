@@ -16,38 +16,12 @@
 namespace duckdb {
 
 //-----------------------------------------------------------------------------
-// Matcher
-//-----------------------------------------------------------------------------
-
-// bindings[0] = distance function
-// bindings[1] = column reference
-// bindings[2] = vector constant
-static bool MatchDistanceFunction(vector<reference<Expression>> &bindings, Expression &distance_expr,
-                                  Expression &column_ref, idx_t vector_size) {
-
-	unordered_set<string> distance_functions = {
-	    "array_distance", "<->", "array_cosine_distance", "<=>", "array_negative_inner_product", "<#>"};
-
-	auto distance_matcher = make_uniq<FunctionExpressionMatcher>();
-	distance_matcher->function = make_uniq<ManyFunctionMatcher>(distance_functions);
-	distance_matcher->expr_type = make_uniq<SpecificExpressionTypeMatcher>(ExpressionType::BOUND_FUNCTION);
-	distance_matcher->policy = SetMatcher::Policy::UNORDERED;
-	distance_matcher->matchers.push_back(make_uniq<ExpressionEqualityMatcher>(column_ref));
-
-	auto vector_matcher = make_uniq<ConstantExpressionMatcher>();
-	vector_matcher->type = make_uniq<SpecificTypeMatcher>(LogicalType::ARRAY(LogicalType::FLOAT, vector_size));
-	distance_matcher->matchers.push_back(std::move(vector_matcher)); // The vector to match
-
-	return distance_matcher->Match(distance_expr, bindings);
-}
-
-//-----------------------------------------------------------------------------
 // Plan rewriter
 //-----------------------------------------------------------------------------
 class HNSWIndexScanOptimizer : public OptimizerExtension {
 public:
 	HNSWIndexScanOptimizer() {
-		optimize_function = HNSWIndexScanOptimizer::Optimize;
+		optimize_function = Optimize;
 	}
 
 	static bool TryOptimize(ClientContext &context, unique_ptr<LogicalOperator> &plan) {
@@ -119,29 +93,34 @@ public:
 		vector<reference<Expression>> bindings;
 
 		table_info.GetIndexes().BindAndScan<HNSWIndex>(context, table_info, [&](HNSWIndex &hnsw_index) {
-			// Check that the HNSW index actually indexes the expression
-			const auto index_expr = hnsw_index.unbound_expressions[0]->Copy();
-			if (!hnsw_index.CanRewriteIndexExpression(get, *index_expr)) {
-				return false;
-			}
-
-			const auto vector_size = hnsw_index.GetVectorSize();
-
 			// Reset the bindings
 			bindings.clear();
 
-			if (!MatchDistanceFunction(bindings, *projection_expr, *index_expr, vector_size)) {
-				// The expression is not a distance function
+			// Check that the projection expression is a distance function that matches the index
+			if(!hnsw_index.TryMatchDistanceFunction(projection_expr, bindings)) {
+				return false;
+			}
+			// Check that the HNSW index actually indexes the expression
+			unique_ptr<Expression> index_expr;
+			if(!hnsw_index.TryBindIndexExpression(get, index_expr)) {
 				return false;
 			}
 
-			const auto &distance_func = bindings[0].get().Cast<BoundFunctionExpression>();
-			if (!hnsw_index.MatchesDistanceFunction(distance_func.function.name)) {
-				// The distance function of the index does not match the distance function of the query
-				return false;
+			// Now, ensure that one of the bindings is a constant vector, and the other our index expression
+			auto &const_expr_ref = bindings[1];
+			auto &index_expr_ref = bindings[2];
+
+			if(const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
+				// Swap the bindings and try again
+				std::swap(const_expr_ref, index_expr_ref);
+				if(const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
+					// Nope, not a match, we can't optimize.
+					return false;
+				}
 			}
 
-			const auto &matched_vector = bindings[2].get().Cast<BoundConstantExpression>().value;
+			const auto vector_size = hnsw_index.GetVectorSize();
+			const auto &matched_vector = const_expr_ref.get().Cast<BoundConstantExpression>().value;
 			auto query_vector = make_unsafe_uniq_array<float>(vector_size);
 			auto vector_elements = ArrayValue::GetChildren(matched_vector);
 			for (idx_t i = 0; i < vector_size; i++) {

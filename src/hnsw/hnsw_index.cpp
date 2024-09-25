@@ -3,12 +3,11 @@
 #include "duckdb/common/serializer/binary_deserializer.hpp"
 #include "duckdb/common/serializer/binary_serializer.hpp"
 #include "duckdb/execution/index/fixed_size_allocator.hpp"
-#include "duckdb/storage/table/scan_state.hpp"
 #include "duckdb/planner/operator/logical_get.hpp"
+#include "duckdb/storage/table/scan_state.hpp"
 #include "hnsw/hnsw.hpp"
 
 namespace duckdb {
-
 //------------------------------------------------------------------------------
 // Linked Blocks
 //------------------------------------------------------------------------------
@@ -36,7 +35,7 @@ private:
 
 public:
 	LinkedBlockReader(FixedSizeAllocator &allocator, IndexPointer root_pointer)
-	    : allocator(allocator), root_pointer(root_pointer), current_pointer(root_pointer), position_in_block(0) {
+		: allocator(allocator), root_pointer(root_pointer), current_pointer(root_pointer), position_in_block(0) {
 	}
 
 	void Reset() {
@@ -78,7 +77,7 @@ private:
 
 public:
 	LinkedBlockWriter(FixedSizeAllocator &allocator, IndexPointer root_pointer)
-	    : allocator(allocator), root_pointer(root_pointer), current_pointer(root_pointer), position_in_block(0) {
+		: allocator(allocator), root_pointer(root_pointer), current_pointer(root_pointer), position_in_block(0) {
 	}
 
 	void ClearCurrentBlock() {
@@ -120,10 +119,10 @@ public:
 
 // Constructor
 HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_type, const vector<column_t> &column_ids,
-                     TableIOManager &table_io_manager, const vector<unique_ptr<Expression>> &unbound_expressions,
-                     AttachedDatabase &db, const case_insensitive_map_t<Value> &options, const IndexStorageInfo &info,
-                     idx_t estimated_cardinality)
-    : BoundIndex(name, TYPE_NAME, index_constraint_type, column_ids, table_io_manager, unbound_expressions, db) {
+					 TableIOManager &table_io_manager, const vector<unique_ptr<Expression>> &unbound_expressions,
+					 AttachedDatabase &db, const case_insensitive_map_t<Value> &options, const IndexStorageInfo &info,
+					 idx_t estimated_cardinality)
+	: BoundIndex(name, TYPE_NAME, index_constraint_type, column_ids, table_io_manager, unbound_expressions, db) {
 
 	if (index_constraint_type != IndexConstraintType::NONE) {
 		throw NotImplementedException("HNSW indexes do not support unique or primary key constraints");
@@ -203,12 +202,15 @@ HNSWIndex::HNSWIndex(const string &name, IndexConstraintType index_constraint_ty
 		if (!info.allocator_infos[0].buffer_ids.empty()) {
 			LinkedBlockReader reader(*linked_block_allocator, root_block_ptr);
 			index.load_from_stream(
-			    [&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
+				[&](void *data, size_t size) { return size == reader.ReadData(static_cast<data_ptr_t>(data), size); });
 		}
 	} else {
 		index.reserve(MinValue(static_cast<idx_t>(32), estimated_cardinality));
 	}
 	index_size = index.size();
+
+
+	function_matcher = MakeFunctionMatcher();
 }
 
 idx_t HNSWIndex::GetVectorSize() const {
@@ -228,50 +230,32 @@ string HNSWIndex::GetMetric() const {
 	}
 }
 
-bool HNSWIndex::MatchesDistanceFunction(const string &name) const {
-	if ((name == "array_distance" || name == "<->") &&
-	    index.metric().metric_kind() == unum::usearch::metric_kind_t::l2sq_k) {
-		// Note: usearch uses l2sq, for their metric, but its functionally equivalent to sqrt(l2sq)
-		return true;
-	}
-	if ((name == "array_cosine_distance" || name == "<=>") &&
-	    index.metric().metric_kind() == unum::usearch::metric_kind_t::cos_k) {
-		return true;
-	}
-	if ((name == "array_negative_inner_product" || name == "<#>") &&
-	    index.metric().metric_kind() == unum::usearch::metric_kind_t::ip_k) {
-		// Note: usearch uses (1.0 - ip) for their metric, but its functionally equivalent to (-ip)
-		return true;
-	}
-	return false;
-}
-
 const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIND_MAP = {
-    {"l2sq", unum::usearch::metric_kind_t::l2sq_k},
-    {"cosine", unum::usearch::metric_kind_t::cos_k},
-    {"ip", unum::usearch::metric_kind_t::ip_k},
-    /* TODO: Add the rest of these later
-    {"divergence", unum::usearch::metric_kind_t::divergence_k},
-    {"hamming", unum::usearch::metric_kind_t::hamming_k},
-    {"jaccard", unum::usearch::metric_kind_t::jaccard_k},
-    {"haversine", unum::usearch::metric_kind_t::haversine_k},
-    {"pearson", unum::usearch::metric_kind_t::pearson_k},
-    {"sorensen", unum::usearch::metric_kind_t::sorensen_k},
-    {"tanimoto", unum::usearch::metric_kind_t::tanimoto_k}
-     */
+	{"l2sq", unum::usearch::metric_kind_t::l2sq_k},
+	{"cosine", unum::usearch::metric_kind_t::cos_k},
+	{"ip", unum::usearch::metric_kind_t::ip_k},
+	/* TODO: Add the rest of these later
+	{"divergence", unum::usearch::metric_kind_t::divergence_k},
+	{"hamming", unum::usearch::metric_kind_t::hamming_k},
+	{"jaccard", unum::usearch::metric_kind_t::jaccard_k},
+	{"haversine", unum::usearch::metric_kind_t::haversine_k},
+	{"pearson", unum::usearch::metric_kind_t::pearson_k},
+	{"sorensen", unum::usearch::metric_kind_t::sorensen_k},
+	{"tanimoto", unum::usearch::metric_kind_t::tanimoto_k}
+	 */
 };
 
 const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIND_MAP = {
-    {static_cast<uint8_t>(LogicalTypeId::FLOAT), unum::usearch::scalar_kind_t::f32_k},
-    {static_cast<uint8_t>(LogicalTypeId::DOUBLE), unum::usearch::scalar_kind_t::f64_k},
-    {static_cast<uint8_t>(LogicalTypeId::TINYINT), unum::usearch::scalar_kind_t::i8_k},
-    {static_cast<uint8_t>(LogicalTypeId::SMALLINT), unum::usearch::scalar_kind_t::i16_k},
-    {static_cast<uint8_t>(LogicalTypeId::INTEGER), unum::usearch::scalar_kind_t::i32_k},
-    {static_cast<uint8_t>(LogicalTypeId::BIGINT), unum::usearch::scalar_kind_t::i64_k},
-    {static_cast<uint8_t>(LogicalTypeId::UTINYINT), unum::usearch::scalar_kind_t::u8_k},
-    {static_cast<uint8_t>(LogicalTypeId::USMALLINT), unum::usearch::scalar_kind_t::u16_k},
-    {static_cast<uint8_t>(LogicalTypeId::UINTEGER), unum::usearch::scalar_kind_t::u32_k},
-    {static_cast<uint8_t>(LogicalTypeId::UBIGINT), unum::usearch::scalar_kind_t::u64_k}};
+	{static_cast<uint8_t>(LogicalTypeId::FLOAT), unum::usearch::scalar_kind_t::f32_k},
+	{static_cast<uint8_t>(LogicalTypeId::DOUBLE), unum::usearch::scalar_kind_t::f64_k},
+	{static_cast<uint8_t>(LogicalTypeId::TINYINT), unum::usearch::scalar_kind_t::i8_k},
+	{static_cast<uint8_t>(LogicalTypeId::SMALLINT), unum::usearch::scalar_kind_t::i16_k},
+	{static_cast<uint8_t>(LogicalTypeId::INTEGER), unum::usearch::scalar_kind_t::i32_k},
+	{static_cast<uint8_t>(LogicalTypeId::BIGINT), unum::usearch::scalar_kind_t::i64_k},
+	{static_cast<uint8_t>(LogicalTypeId::UTINYINT), unum::usearch::scalar_kind_t::u8_k},
+	{static_cast<uint8_t>(LogicalTypeId::USMALLINT), unum::usearch::scalar_kind_t::u16_k},
+	{static_cast<uint8_t>(LogicalTypeId::UINTEGER), unum::usearch::scalar_kind_t::u32_k},
+	{static_cast<uint8_t>(LogicalTypeId::UBIGINT), unum::usearch::scalar_kind_t::u64_k}};
 
 unique_ptr<HNSWIndexStats> HNSWIndex::GetStats() {
 	auto lock = rwlock.GetExclusiveLock();
@@ -324,11 +308,11 @@ unique_ptr<IndexScanState> HNSWIndex::InitializeScan(float *query_vector, idx_t 
 	return std::move(state);
 }
 
-idx_t HNSWIndex::Scan(IndexScanState &state, Vector &result) {
+idx_t HNSWIndex::Scan(IndexScanState &state, Vector &result, idx_t result_offset) {
 	auto &scan_state = state.Cast<HNSWIndexScanState>();
 
 	idx_t count = 0;
-	auto row_ids = FlatVector::GetData<row_t>(result);
+	auto row_ids = FlatVector::GetData<row_t>(result) + result_offset;
 
 	// Push the row ids into the result vector, up to STANDARD_VECTOR_SIZE or the
 	// end of the result set
@@ -338,6 +322,59 @@ idx_t HNSWIndex::Scan(IndexScanState &state, Vector &result) {
 
 	return count;
 }
+
+struct MultiScanState final : IndexScanState {
+	Vector vec;
+	vector<row_t> row_ids;
+	size_t ef_search;
+	MultiScanState(size_t ef_search_p) : vec(LogicalType::ROW_TYPE, nullptr), ef_search(ef_search_p) {
+	}
+};
+
+unique_ptr<IndexScanState> HNSWIndex::InitializeMultiScan(ClientContext &context) {
+	// Try to get the ef_search parameter from the database or use the default value
+	auto ef_search = index.expansion_search();
+
+	Value hnsw_ef_search_opt;
+	if (context.TryGetCurrentSetting("hnsw_ef_search", hnsw_ef_search_opt)) {
+		if (!hnsw_ef_search_opt.IsNull() && hnsw_ef_search_opt.type() == LogicalType::BIGINT) {
+			const auto val = hnsw_ef_search_opt.GetValue<int64_t>();
+			if (val > 0) {
+				ef_search = static_cast<idx_t>(val);
+			}
+		}
+	}
+	// Return the new state
+	return make_uniq<MultiScanState>(ef_search);
+}
+
+idx_t HNSWIndex::ExecuteMultiScan(IndexScanState &state_p, float *query_vector, idx_t limit) {
+	auto &state = state_p.Cast<MultiScanState>();
+
+	USearchIndexType::search_result_t search_result;
+	{
+		auto lock = rwlock.GetSharedLock();
+		search_result = index.ef_search(query_vector, limit, state.ef_search);
+	}
+
+	const auto offset = state.row_ids.size();
+	state.row_ids.resize(state.row_ids.size() + search_result.size());
+	search_result.dump_to(state.row_ids.data() + offset);
+
+	return search_result.size();
+}
+
+const Vector &HNSWIndex::GetMultiScanResult(IndexScanState &state) {
+	auto &scan_state = state.Cast<MultiScanState>();
+	FlatVector::SetData(scan_state.vec, (data_ptr_t)scan_state.row_ids.data());
+	return scan_state.vec;
+}
+
+void HNSWIndex::ResetMultiScan(IndexScanState &state) {
+	auto &scan_state = state.Cast<MultiScanState>();
+	scan_state.row_ids.clear();
+}
+
 
 void HNSWIndex::CommitDrop(IndexLock &index_lock) {
 	// Acquire an exclusive lock to drop the index
@@ -472,7 +509,6 @@ void HNSWIndex::PersistToDisk() {
 	}
 
 	// Write
-
 	if (root_block_ptr.Get() == 0) {
 		root_block_ptr = linked_block_allocator->New();
 	}
@@ -536,35 +572,84 @@ void HNSWIndex::VerifyAllocations(IndexLock &state) {
 //------------------------------------------------------------------------------
 // Can rewrite index expression?
 //------------------------------------------------------------------------------
-static void RewriteIndexExpression(const Index &index, LogicalGet &get, Expression &expr, bool &rewrite_possible,
-                                   bool &any_column_ref) {
-	if (expr.type == ExpressionType::BOUND_COLUMN_REF) {
-		any_column_ref = true;
-		auto &bound_colref = expr.Cast<BoundColumnRefExpression>();
-		// bound column ref: rewrite to fit in the current set of bound column ids
-		bound_colref.binding.table_index = get.table_index;
-		auto &column_ids = index.GetColumnIds();
-		auto &get_column_ids = get.GetColumnIds();
-		column_t referenced_column = column_ids[bound_colref.binding.column_index];
-		// search for the referenced column in the set of column_ids
-		for (idx_t i = 0; i < get_column_ids.size(); i++) {
-			if (get_column_ids[i] == referenced_column) {
-				bound_colref.binding.column_index = i;
+static void TryBindIndexExpressionInternal(Expression &expr, idx_t table_idx, const vector<column_t> &index_columns,
+	const vector<column_t> &table_columns, bool &success, bool &found) {
+
+	if(expr.type == ExpressionType::BOUND_COLUMN_REF) {
+		found = true;
+		auto &ref = expr.Cast<BoundColumnRefExpression>();
+
+		// Rewrite the column reference to fit in the current set of bound column ids
+		ref.binding.table_index = table_idx;
+
+		const auto referenced_column = index_columns[ref.binding.column_index];
+		for(idx_t i = 0; i < table_columns.size(); i++) {
+			if(table_columns[i] == referenced_column) {
+				ref.binding.column_index = i;
 				return;
 			}
 		}
-		// column id not found in bound columns in the LogicalGet: rewrite not possible
-		rewrite_possible = false;
+		success = false;
 	}
-	ExpressionIterator::EnumerateChildren(
-	    expr, [&](Expression &child) { RewriteIndexExpression(index, get, child, rewrite_possible, any_column_ref); });
+
+	ExpressionIterator::EnumerateChildren(expr, [&](Expression &child) {
+		TryBindIndexExpressionInternal(child, table_idx, index_columns, table_columns, success, found);
+	});
 }
 
-bool HNSWIndex::CanRewriteIndexExpression(LogicalGet &get, Expression &column_ref) const {
-	bool rewrite_possible = true;
-	bool any_column_ref = false;
-	RewriteIndexExpression(*this, get, column_ref, rewrite_possible, any_column_ref);
-	return any_column_ref && rewrite_possible;
+bool HNSWIndex::TryBindIndexExpression(LogicalGet &get, unique_ptr<Expression> &result) const {
+	auto expr_ptr = unbound_expressions.back()->Copy();
+
+	auto &expr = *expr_ptr;
+	auto &index_columns = GetColumnIds();
+	auto &table_columns = get.GetColumnIds();
+
+	auto success = true;
+	auto found = false;
+
+	TryBindIndexExpressionInternal(expr, get.table_index, index_columns, table_columns, success, found);
+
+	if(success && found) {
+		result = std::move(expr_ptr);
+		return true;
+	}
+	return false;
+}
+
+bool HNSWIndex::TryMatchDistanceFunction(const unique_ptr<Expression>& expr, vector<reference<Expression>> &bindings) const {
+	return function_matcher->Match(*expr, bindings);
+}
+
+unique_ptr<ExpressionMatcher> HNSWIndex::MakeFunctionMatcher() const {
+	unordered_set<string> distance_functions;
+	switch(index.metric().metric_kind()) {
+		case unum::usearch::metric_kind_t::l2sq_k:
+			distance_functions = { "array_distance", "<->" };
+			break;
+		case unum::usearch::metric_kind_t::cos_k:
+			distance_functions = { "array_cosine_distance", "<=>" };
+			break;
+		case unum::usearch::metric_kind_t::ip_k:
+			distance_functions = { "array_negative_inner_product", "<#>" };
+			break;
+		default:
+			throw NotImplementedException("Unknown metric kind");
+	}
+
+	auto matcher = make_uniq<FunctionExpressionMatcher>();
+	matcher->function = make_uniq<ManyFunctionMatcher>(distance_functions);
+	matcher->expr_type = make_uniq<SpecificExpressionTypeMatcher>(ExpressionType::BOUND_FUNCTION);
+	matcher->policy = SetMatcher::Policy::UNORDERED;
+
+	auto lhs_matcher = make_uniq<ExpressionMatcher>();
+	lhs_matcher->type = make_uniq<SpecificTypeMatcher>(LogicalType::ARRAY(LogicalType::FLOAT, GetVectorSize()));
+	matcher->matchers.push_back(std::move(lhs_matcher));
+
+	auto rhs_matcher = make_uniq<ExpressionMatcher>();
+	rhs_matcher->type = make_uniq<SpecificTypeMatcher>(LogicalType::ARRAY(LogicalType::FLOAT, GetVectorSize()));
+	matcher->matchers.push_back(std::move(rhs_matcher));
+
+	return std::move(matcher);
 }
 
 //------------------------------------------------------------------------------
