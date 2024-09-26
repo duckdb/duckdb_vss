@@ -1,4 +1,3 @@
-#include "aggregate_function_matcher.hpp"
 #include "duckdb/catalog/catalog_entry/aggregate_function_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/execution/column_binding_resolver.hpp"
@@ -7,7 +6,6 @@
 #include "duckdb/optimizer/optimizer.hpp"
 #include "duckdb/planner/expression/bound_comparison_expression.hpp"
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
-#include "duckdb/planner/expression/bound_function_expression.hpp"
 #include "duckdb/planner/expression/bound_window_expression.hpp"
 #include "duckdb/planner/operator/logical_aggregate.hpp"
 #include "duckdb/planner/operator/logical_cross_product.hpp"
@@ -18,12 +16,12 @@
 #include "duckdb/planner/operator/logical_join.hpp"
 #include "duckdb/planner/operator/logical_projection.hpp"
 #include "duckdb/planner/operator/logical_window.hpp"
+#include "duckdb/planner/expression_iterator.hpp"
 #include "duckdb/storage/table/scan_state.hpp"
 #include "duckdb/transaction/duck_transaction.hpp"
+
 #include "hnsw/hnsw.hpp"
 #include "hnsw/hnsw_index.hpp"
-
-#include <duckdb/planner/expression_iterator.hpp>
 
 namespace duckdb {
 
@@ -110,8 +108,6 @@ OperatorResultType PhysicalHNSWIndexJoin::Execute(ExecutionContext &context, Dat
 												   GlobalOperatorState &gstate, OperatorState &ostate) const {
 	auto &state = ostate.Cast<HNSWIndexJoinState>();
 	auto &transcation = DuckTransaction::Get(context.client, table.catalog);
-
-	// TODO: Assert that limit is at most 2048
 
 	// TODO: dont flatten
 	input.Flatten();
@@ -291,10 +287,10 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	// Look for:
 	// delim_join
 	//	-> seq_scan (lhs)
-	//  -> projection
+	//  -> projection "outer" (optional, only there if the distance expression is unused)
 	//		-> filter
 	//			-> window
-	//				-> projection
+	//				-> projection "inner"
 	//					-> cross_product
 	//						-> delim_get
 	//						-> seq_scan(rhs)
@@ -304,32 +300,49 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	// Match Operators
 	//------------------------------------------------------------------------------
 #define MATCH_OPERATOR(OP, TYPE, CHILD_COUNT) if(OP->type != LogicalOperatorType::TYPE || (OP->children.size() != CHILD_COUNT)) { return false; }
-	MATCH_OPERATOR(plan, LOGICAL_PROJECTION, 1);
-	auto &top_proj = plan->Cast<LogicalProjection>();
 
-	MATCH_OPERATOR(top_proj.children.back(), LOGICAL_DELIM_JOIN, 2);
-	auto &delim_join = top_proj.children.back()->Cast<LogicalJoin>();
+	MATCH_OPERATOR(plan, LOGICAL_DELIM_JOIN, 2);
+	auto &delim_join = plan->Cast<LogicalJoin>();
 
-	MATCH_OPERATOR(delim_join.children[0], LOGICAL_PROJECTION, 1)
-	auto &filter_proj = delim_join.children[0]->Cast<LogicalProjection>();
-
+	// branch
 	MATCH_OPERATOR(delim_join.children[1], LOGICAL_GET, 0);
 	auto &lhs_get = delim_join.children[1]->Cast<LogicalGet>();
 	if(lhs_get.function.name != "seq_scan") {
 		return false;
 	}
 
-	MATCH_OPERATOR(filter_proj.children[0], LOGICAL_FILTER, 1);
-	auto &filter = filter_proj.children[0]->Cast<LogicalFilter>();
+	// branch
+	// There might not be a projection here if we keep the distance function.
 
-	MATCH_OPERATOR(filter.children[0], LOGICAL_WINDOW, 1);
-	auto &window = filter.children[0]->Cast<LogicalWindow>();
+	const unique_ptr<LogicalOperator>* filter_ptr = nullptr;
+	const unique_ptr<LogicalOperator>* outer_proj_ptr = nullptr;
+
+	auto &delim_child = delim_join.children[0];
+	if(delim_child->type == LogicalOperatorType::LOGICAL_PROJECTION) {
+		// The distance expressions is projected out.
+		auto &filter_proj = delim_child->Cast<LogicalProjection>();
+		if(filter_proj.children.back()->type != LogicalOperatorType::LOGICAL_FILTER) {
+			return false;
+		}
+		outer_proj_ptr = &delim_child;
+		filter_ptr = &filter_proj.children.back();
+	} else if (delim_child->type == LogicalOperatorType::LOGICAL_FILTER) {
+		// The distance function is kept.
+		filter_ptr = &delim_child;
+	} else {
+		return false;
+	}
+
+	auto &filter = (*filter_ptr)->Cast<LogicalFilter>();
+
+	MATCH_OPERATOR(filter.children.back(), LOGICAL_WINDOW, 1);
+	auto &window = filter.children.back()->Cast<LogicalWindow>();
 
 	MATCH_OPERATOR(window.children[0], LOGICAL_PROJECTION, 1);
-	auto &distance_proj = window.children[0]->Cast<LogicalProjection>();
+	auto &inner_proj = window.children[0]->Cast<LogicalProjection>();
 
-	MATCH_OPERATOR(distance_proj.children[0], LOGICAL_CROSS_PRODUCT, 2);
-	auto &cross_product = distance_proj.children[0]->Cast<LogicalCrossProduct>();
+	MATCH_OPERATOR(inner_proj.children[0], LOGICAL_CROSS_PRODUCT, 2);
+	auto &cross_product = inner_proj.children[0]->Cast<LogicalCrossProduct>();
 #undef MATCH_OPERATOR
 
 	// Extract the delim_get and the rhs_get
@@ -350,7 +363,7 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 		return false;
 	}
 
-	const auto &delim_get = (*delim_get_ptr)->Cast<LogicalDelimGet>();
+	auto &delim_get = (*delim_get_ptr)->Cast<LogicalDelimGet>();
 	const auto &rhs_get = (*rhs_get_ptr)->Cast<LogicalGet>();
 	if(rhs_get.function.name != "seq_scan") {
 		return false;
@@ -367,11 +380,11 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	if(filter.expressions.back()->type != ExpressionType::COMPARE_LESSTHANOREQUALTO) {
 		return false;
 	}
-	auto &compare_expr = filter.expressions.back()->Cast<BoundComparisonExpression>();
+	const auto &compare_expr = filter.expressions.back()->Cast<BoundComparisonExpression>();
 	if(compare_expr.right->type != ExpressionType::VALUE_CONSTANT) {
 		return false;
 	}
-	auto &constant_expr = compare_expr.right->Cast<BoundConstantExpression>();
+	const auto &constant_expr = compare_expr.right->Cast<BoundConstantExpression>();
 	if(constant_expr.return_type != LogicalType::BIGINT) {
 		return false;
 	}
@@ -408,17 +421,15 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	if(window_expr.orders.back().expression->type != ExpressionType::BOUND_COLUMN_REF) {
 		return false;
 	}
-	auto &distance_ref_expr = window_expr.orders.back().expression->Cast<BoundColumnRefExpression>();
-
-
+	const auto &distance_ref_expr = window_expr.orders.back().expression->Cast<BoundColumnRefExpression>();
 	// Verify that this column ref references the distance expression in the projection
-	if(distance_ref_expr.binding.table_index != distance_proj.table_index) {
+	if(distance_ref_expr.binding.table_index != inner_proj.table_index) {
 		return false;
 	}
-	if(distance_ref_expr.binding.column_index >= distance_proj.expressions.size()) {
+	if(distance_ref_expr.binding.column_index >= inner_proj.expressions.size()) {
 		return false;
 	}
-	auto &distance_expr_ptr = distance_proj.expressions[distance_ref_expr.binding.column_index];
+	const auto &distance_expr_ptr = inner_proj.expressions[distance_ref_expr.binding.column_index];
 
 	//------------------------------------------------------------------------------
 	// Match the index
@@ -498,51 +509,90 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	index_join->lhs_vector_column = lhs_ref_expr.binding.column_index;
 	index_join->rhs_vector_column = rhs_ref_expr.binding.column_index;
 
-	// All the expressions of the filter_proj will be bound column refs.
-	// And they will reference columns from the distance_proj.
 	ColumnBindingReplacer replacer;
 
-	// Figure out which bindings we are pulling from the right hand side
-	for(const auto &binding : filter_proj.GetColumnBindings()) {
+	// Start by creating an new projection from the delim join
+	// This projection will be the top projection of the new plan
+	vector<unique_ptr<Expression>> projection_expressions;
+	auto projection_table_index = binder.GenerateTableIndex();
+	auto delim_bindings = delim_join.GetColumnBindings();
+	auto delim_types = delim_join.types;
 
-		// The binding is a bound column ref to the filter
-		const auto &filter_expr = filter_proj.expressions[binding.column_index];
-		D_ASSERT(filter_expr->type == ExpressionType::BOUND_COLUMN_REF);
-		const auto &filter_colref_expr = filter_expr->Cast<BoundColumnRefExpression>();
+	idx_t new_binding_idx = 0;
+	for(idx_t i = 0; i < delim_bindings.size(); i++) {
+		auto &old_binding = delim_bindings[i];
 
-		// D_ASSERT(filter_colref_expr.binding.table_index == window.window_index);
-
-		const auto &proj_expr = distance_proj.expressions[filter_colref_expr.binding.column_index];
-
-		if(proj_expr->type != ExpressionType::BOUND_COLUMN_REF) {
-			// TODO: Save these and push on top of the cross product later.
-			throw NotImplementedException("Only bound column refs are supported in the filter expression");
+		if(old_binding.table_index == window.window_index) {
+			// The window expression is never used past the filter. We can just skip it.
+			// I think...?
+			continue;
 		}
 
-		const auto &proj_colref_expr = proj_expr->Cast<BoundColumnRefExpression>();
-		if(proj_colref_expr.binding.table_index == delim_get.table_index) {
-			ColumnBinding new_binding(index_join->table_index, proj_colref_expr.binding.column_index);
-			replacer.replacement_bindings.emplace_back(binding, new_binding);
-		} else if(proj_colref_expr.binding.table_index == rhs_get.table_index) {
-			// Make it reference the RHS of the cross product (our new join) directly
-			replacer.replacement_bindings.emplace_back(binding, proj_colref_expr.binding);
+		auto &old_type = delim_types[i];
+		projection_expressions.push_back(make_uniq<BoundColumnRefExpression>(old_type, old_binding));
+		replacer.replacement_bindings.emplace_back(old_binding, ColumnBinding(projection_table_index, new_binding_idx++));
+	}
+	auto new_projection = make_uniq<LogicalProjection>(projection_table_index, std::move(projection_expressions));
+
+	// Replace all previous references with our new projection
+	replacer.VisitOperator(*root);
+	replacer.replacement_bindings.clear();
+
+	// Start inlining our expressions
+	for(auto &expr : new_projection->expressions) {
+		auto &ref = expr->Cast<BoundColumnRefExpression>();
+
+		// If this references the delim seq scan, reference the index join instead
+		if(ref.binding.table_index == lhs_get.table_index) {
+			ref.binding.table_index = index_join->table_index;
+		}
+
+		// If this references the outer proj, replace it with the inner proj
+		if(outer_proj_ptr) {
+			auto &outer_proj = outer_proj_ptr->get()->Cast<LogicalProjection>();
+			if(ref.binding.table_index == outer_proj.table_index) {
+				// assert that this can only be bound column ref
+				const auto &outer_expr = outer_proj.expressions[ref.binding.column_index];
+				const auto &outer_ref = outer_expr->Cast<BoundColumnRefExpression>();
+
+				ref.binding = outer_ref.binding;
+			}
+		}
+
+		// If this references the inner proj, replace it with the actual expression
+		if(ref.binding.table_index == inner_proj.table_index) {
+			const auto &inner_expr = inner_proj.expressions[ref.binding.column_index];
+			expr = inner_expr->Copy();
+			// These can still reference the delim_get, but we replace them in the next step.
+		}
+		// Special case: the window row number expression. Is not used, but maybe we add it to the index scan as a third
+		// column export.
+		else if(ref.binding.table_index == window.window_index) {
+			// Just return a constant for now...
+			// TODO: Fix this!
+			expr = make_uniq<BoundConstantExpression>(Value::BIGINT(1337));
 		}
 	}
 
-	// Figure out what we are pulling from the left hand side
-	for(const auto &old_lhs_binding : lhs_get.GetColumnBindings()) {
-		ColumnBinding new_binding(index_join->table_index, old_lhs_binding.column_index);
-		replacer.replacement_bindings.emplace_back(old_lhs_binding, new_binding);
+
+	// Now, also make sure to replace the delim_get bindings with the index join
+	for(auto &binding : delim_get.GetColumnBindings()) {
+		auto &old_binding = binding;
+		auto new_binding = ColumnBinding(index_join->table_index, old_binding.column_index);
+		replacer.replacement_bindings.emplace_back(old_binding, new_binding);
 	}
+	replacer.VisitOperator(*new_projection);
+
+	// We are done!
 
 	// Add the RHS of the cross product to the join
 	index_join->children.emplace_back(std::move(*rhs_get_ptr));
 
-	// Swap the plan
-	top_proj.children[0] = std::move(index_join);
+	// Add the new projection on top of the join
+	new_projection->children.emplace_back(std::move(index_join));
 
-	// Replace the bindings
-	replacer.VisitOperator(*root);
+	// Swap the plan
+	plan = std::move(new_projection);
 
 	return true;
 }
