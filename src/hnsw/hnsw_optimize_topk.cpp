@@ -72,17 +72,17 @@ public:
 		}
 
 		auto &agg_expr = agg.expressions[0];
-		if(agg_expr->type != ExpressionType::BOUND_AGGREGATE) {
+		if (agg_expr->type != ExpressionType::BOUND_AGGREGATE) {
 			return false;
 		}
 		auto &agg_func_expr = agg_expr->Cast<BoundAggregateExpression>();
-		if(agg_func_expr.function.name != "min_by") {
+		if (agg_func_expr.function.name != "min_by") {
 			return false;
 		}
-		if(agg_func_expr.children.size() != 3) {
+		if (agg_func_expr.children.size() != 3) {
 			return false;
 		}
-		if(agg_func_expr.children[2]->type != ExpressionType::VALUE_CONSTANT) {
+		if (agg_func_expr.children[2]->type != ExpressionType::VALUE_CONSTANT) {
 			return false;
 		}
 		const auto &col_expr = agg_func_expr.children[0];
@@ -121,12 +121,12 @@ public:
 			bindings.clear();
 
 			// Check that the projection expression is a distance function that matches the index
-			if(!hnsw_index.TryMatchDistanceFunction(dist_expr, bindings)) {
+			if (!hnsw_index.TryMatchDistanceFunction(dist_expr, bindings)) {
 				return false;
 			}
 			// Check that the HNSW index actually indexes the expression
 			unique_ptr<Expression> index_expr;
-			if(!hnsw_index.TryBindIndexExpression(get, index_expr)) {
+			if (!hnsw_index.TryBindIndexExpression(get, index_expr)) {
 				return false;
 			}
 
@@ -134,10 +134,11 @@ public:
 			auto &const_expr_ref = bindings[1];
 			auto &index_expr_ref = bindings[2];
 
-			if(const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
+			if (const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
 				// Swap the bindings and try again
 				std::swap(const_expr_ref, index_expr_ref);
-				if(const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
+				if (const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT ||
+				    !index_expr->Equals(index_expr_ref)) {
 					// Nope, not a match, we can't optimize.
 					return false;
 				}
@@ -152,7 +153,7 @@ public:
 				query_vector[i] = vector_elements[i].GetValue<float>();
 			}
 			const auto k_limit = limit_expr->Cast<BoundConstantExpression>().value.GetValue<int32_t>();
-			if(k_limit <= 0 || k_limit >= STANDARD_VECTOR_SIZE) {
+			if (k_limit <= 0 || k_limit >= STANDARD_VECTOR_SIZE) {
 				return false;
 			}
 			bind_data = make_uniq<HNSWIndexScanBindData>(duck_table, hnsw_index, k_limit, std::move(query_vector));

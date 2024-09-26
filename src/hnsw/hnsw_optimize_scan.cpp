@@ -97,12 +97,12 @@ public:
 			bindings.clear();
 
 			// Check that the projection expression is a distance function that matches the index
-			if(!hnsw_index.TryMatchDistanceFunction(projection_expr, bindings)) {
+			if (!hnsw_index.TryMatchDistanceFunction(projection_expr, bindings)) {
 				return false;
 			}
 			// Check that the HNSW index actually indexes the expression
 			unique_ptr<Expression> index_expr;
-			if(!hnsw_index.TryBindIndexExpression(get, index_expr)) {
+			if (!hnsw_index.TryBindIndexExpression(get, index_expr)) {
 				return false;
 			}
 
@@ -110,10 +110,11 @@ public:
 			auto &const_expr_ref = bindings[1];
 			auto &index_expr_ref = bindings[2];
 
-			if(const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
+			if (const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
 				// Swap the bindings and try again
 				std::swap(const_expr_ref, index_expr_ref);
-				if(const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT || !index_expr->Equals(index_expr_ref)) {
+				if (const_expr_ref.get().type != ExpressionType::VALUE_CONSTANT ||
+				    !index_expr->Equals(index_expr_ref)) {
 					// Nope, not a match, we can't optimize.
 					return false;
 				}

@@ -44,7 +44,7 @@ public:
 
 	unique_ptr<IndexScanState> InitializeMultiScan(ClientContext &context);
 	idx_t ExecuteMultiScan(IndexScanState &state, float *query_vector, idx_t limit);
-	const Vector& GetMultiScanResult(IndexScanState &state);
+	const Vector &GetMultiScanResult(IndexScanState &state);
 	void ResetMultiScan(IndexScanState &state);
 
 	unique_ptr<IndexScanState> InitializeScan(float *query_vector, idx_t limit, ClientContext &context);
@@ -61,7 +61,7 @@ public:
 	static const case_insensitive_map_t<unum::usearch::metric_kind_t> METRIC_KIND_MAP;
 	static const unordered_map<uint8_t, unum::usearch::scalar_kind_t> SCALAR_KIND_MAP;
 
-	bool TryMatchDistanceFunction(const unique_ptr<Expression>& expr, vector<reference<Expression>> &bindings) const;
+	bool TryMatchDistanceFunction(const unique_ptr<Expression> &expr, vector<reference<Expression>> &bindings) const;
 	bool TryBindIndexExpression(LogicalGet &get, unique_ptr<Expression> &result) const;
 
 public:

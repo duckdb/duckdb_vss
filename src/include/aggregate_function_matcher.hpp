@@ -7,7 +7,7 @@ namespace duckdb {
 class AggregateFunctionExpressionMatcher : public ExpressionMatcher {
 public:
 	AggregateFunctionExpressionMatcher()
-		: ExpressionMatcher(ExpressionClass::BOUND_AGGREGATE), policy(SetMatcher::Policy::INVALID) {
+	    : ExpressionMatcher(ExpressionClass::BOUND_AGGREGATE), policy(SetMatcher::Policy::INVALID) {
 	}
 	//! The matchers for the child expressions
 	vector<unique_ptr<ExpressionMatcher>> matchers;
