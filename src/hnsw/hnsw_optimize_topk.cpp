@@ -41,7 +41,7 @@ static unique_ptr<Expression> CreateListOrderByExpr(ClientContext &context, uniq
 	new_agg_expr->order_bys = make_uniq<BoundOrderModifier>();
 	new_agg_expr->order_bys->orders.push_back(std::move(order_by_node));
 
-	return new_agg_expr;
+	return std::move(new_agg_expr);
 }
 
 //------------------------------------------------------------------------------
