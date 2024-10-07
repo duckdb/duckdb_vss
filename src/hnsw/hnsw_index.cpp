@@ -402,13 +402,15 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 	auto vec_child_data = FlatVector::GetData<float>(vec_child_vec);
 	auto rowid_data = FlatVector::GetData<row_t>(row_ids);
 
+	auto to_add_count = FlatVector::Validity(vec_vec).CountValid(count);
+
 	// Check if we need to resize the index
 	// We keep the size of the index in a separate atomic to avoid
 	// locking exclusively when checking
 	bool needs_resize = false;
 	{
 		auto lock = rwlock.GetSharedLock();
-		if (index_size.fetch_add(count) + count > index.capacity()) {
+		if (index_size.fetch_add(to_add_count) + to_add_count > index.capacity()) {
 			needs_resize = true;
 		}
 	}
@@ -429,6 +431,11 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 		// Now we can be sure that we have enough space in the index
 		auto lock = rwlock.GetSharedLock();
 		for (idx_t out_idx = 0; out_idx < count; out_idx++) {
+			if(FlatVector::IsNull(vec_vec, out_idx)) {
+				// Dont add nulls
+				continue;
+			}
+
 			auto rowid = rowid_data[out_idx];
 			auto result = index.add(rowid, vec_child_data + (out_idx * array_size), thread_idx);
 			if (!result) {
