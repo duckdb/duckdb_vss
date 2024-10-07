@@ -13,7 +13,7 @@ statement ok
 INSERT INTO b VALUES (ARRAY[4.0, 5.0, 6.0], 'b'), (ARRAY[1.0, 2.0, 3.0], 'a');
 
 statement ok
-CREATE INDEX my_idx ON a USING HNSW (a_vec);
+CREATE INDEX my_idx ON b USING HNSW (b_vec);
 
 query IIIII rowsort
 select * from a, lateral (select *, a_id as id_dup from b order by array_distance(a.a_vec, b.b_vec) limit 1);
