@@ -65,3 +65,11 @@ CREATE INDEX my_idx ON b USING HNSW (b_vec);
 
 query IIIIII rowsort a_has_null
 select * from a, lateral (select *, a_id as id_dup from b order by array_distance(a.a_vec, b.b_vec) limit 2);
+
+# Test with a grouping function
+query II rowsort
+select a_id, list(b_str) from a, lateral (select *, a_id as id_dup from b order by array_distance(a.a_vec, b.b_vec) limit 2) GROUP BY a_id;
+----
+1	[a, b]
+2	[b, a]
+3	[a, b]
