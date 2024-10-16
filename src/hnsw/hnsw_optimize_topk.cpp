@@ -4,6 +4,7 @@
 #include "duckdb/planner/expression/bound_function_expression.hpp"
 #include "duckdb/planner/operator/logical_aggregate.hpp"
 #include "duckdb/planner/operator/logical_get.hpp"
+#include "duckdb/planner/operator/logical_filter.hpp"
 #include "duckdb/optimizer/optimizer.hpp"
 #include "duckdb/planner/expression/bound_aggregate_expression.hpp"
 #include "duckdb/optimizer/matcher/expression_matcher.hpp"
@@ -41,7 +42,7 @@ static unique_ptr<Expression> CreateListOrderByExpr(ClientContext &context, uniq
 	new_agg_expr->order_bys = make_uniq<BoundOrderModifier>();
 	new_agg_expr->order_bys->orders.push_back(std::move(order_by_node));
 
-	return new_agg_expr;
+	return std::move(new_agg_expr);
 }
 
 //------------------------------------------------------------------------------
@@ -99,8 +100,14 @@ public:
 			return false;
 		}
 
-		auto &get = agg.children[0]->Cast<LogicalGet>();
+		auto &get_ptr = agg.children[0];
+		auto &get = get_ptr->Cast<LogicalGet>();
 		if (get.function.name != "seq_scan") {
+			return false;
+		}
+
+		if (get.dynamic_filters && get.dynamic_filters->HasFilters()) {
+			// Cant push down!
 			return false;
 		}
 
@@ -175,6 +182,39 @@ public:
 		// Replace the aggregate with a list() aggregate function ordered by the distance
 		agg.expressions[0] = CreateListOrderByExpr(context, col_expr->Copy(), dist_expr->Copy(),
 		                                           agg_func_expr.filter ? agg_func_expr.filter->Copy() : nullptr);
+
+		if (get.table_filters.filters.empty()) {
+			return true;
+		}
+
+		// We need to pullup the filters from the table scan as our index scan does not support regular filter pushdown.
+		get.projection_ids.clear();
+		get.types.clear();
+
+		auto new_filter = make_uniq<LogicalFilter>();
+		auto &column_ids = get.GetColumnIds();
+		for (const auto &entry : get.table_filters.filters) {
+			idx_t column_id = entry.first;
+			auto &type = get.returned_types[column_id];
+			bool found = false;
+			for (idx_t i = 0; i < column_ids.size(); i++) {
+				if (column_ids[i] == column_id) {
+					column_id = i;
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				throw InternalException("Could not find column id for filter");
+			}
+			auto column = make_uniq<BoundColumnRefExpression>(type, ColumnBinding(get.table_index, column_id));
+			new_filter->expressions.push_back(entry.second->ToExpression(*column));
+		}
+
+		new_filter->children.push_back(std::move(get_ptr));
+		new_filter->ResolveOperatorTypes();
+		get_ptr = std::move(new_filter);
+
 		return true;
 	}
 

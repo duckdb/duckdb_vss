@@ -1,18 +1,20 @@
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/optimizer/column_lifetime_analyzer.hpp"
+#include "duckdb/optimizer/matcher/expression_matcher.hpp"
 #include "duckdb/optimizer/optimizer_extension.hpp"
+#include "duckdb/optimizer/remove_unused_columns.hpp"
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
-#include "duckdb/planner/expression/bound_function_expression.hpp"
+#include "duckdb/planner/expression_iterator.hpp"
 #include "duckdb/planner/operator/logical_get.hpp"
 #include "duckdb/planner/operator/logical_projection.hpp"
 #include "duckdb/planner/operator/logical_top_n.hpp"
+#include "duckdb/planner/operator/logical_filter.hpp"
 #include "duckdb/storage/data_table.hpp"
+
 #include "hnsw/hnsw.hpp"
 #include "hnsw/hnsw_index.hpp"
 #include "hnsw/hnsw_index_scan.hpp"
-#include "duckdb/optimizer/remove_unused_columns.hpp"
-#include "duckdb/planner/expression_iterator.hpp"
-#include "duckdb/optimizer/matcher/expression_matcher.hpp"
+
 namespace duckdb {
 
 //-----------------------------------------------------------------------------
@@ -69,9 +71,15 @@ public:
 			return false;
 		}
 
-		auto &get = projection.children.front()->Cast<LogicalGet>();
+		auto &get_ptr = projection.children.front();
+		auto &get = get_ptr->Cast<LogicalGet>();
 		// Check if the get is a table scan
 		if (get.function.name != "seq_scan") {
+			return false;
+		}
+
+		if (get.dynamic_filters && get.dynamic_filters->HasFilters()) {
+			// Cant push down!
 			return false;
 		}
 
@@ -137,17 +145,46 @@ public:
 			return false;
 		}
 
-		// Replace the scan with our custom index scan function
-
-		get.function = HNSWIndexScanFunction::GetFunction();
+		// If there are no table filters pushed down into the get, we can just replace the get with the index scan
 		const auto cardinality = get.function.cardinality(context, bind_data.get());
+		get.function = HNSWIndexScanFunction::GetFunction();
 		get.has_estimated_cardinality = cardinality->has_estimated_cardinality;
 		get.estimated_cardinality = cardinality->estimated_cardinality;
 		get.bind_data = std::move(bind_data);
+		if (get.table_filters.filters.empty()) {
 
-		// Remove the distance function from the projection
-		// projection.expressions.erase(projection.expressions.begin() + static_cast<ptrdiff_t>(projection_index));
-		// top_n.expressions
+			// Remove the TopN operator
+			plan = std::move(top_n.children[0]);
+			return true;
+		}
+
+		// Otherwise, things get more complicated. We need to pullup the filters from the table scan as our index scan
+		// does not support regular filter pushdown.
+		get.projection_ids.clear();
+		get.types.clear();
+
+		auto new_filter = make_uniq<LogicalFilter>();
+		auto &column_ids = get.GetColumnIds();
+		for (const auto &entry : get.table_filters.filters) {
+			idx_t column_id = entry.first;
+			auto &type = get.returned_types[column_id];
+			bool found = false;
+			for (idx_t i = 0; i < column_ids.size(); i++) {
+				if (column_ids[i] == column_id) {
+					column_id = i;
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				throw InternalException("Could not find column id for filter");
+			}
+			auto column = make_uniq<BoundColumnRefExpression>(type, ColumnBinding(get.table_index, column_id));
+			new_filter->expressions.push_back(entry.second->ToExpression(*column));
+		}
+		new_filter->children.push_back(std::move(get_ptr));
+		new_filter->ResolveOperatorTypes();
+		get_ptr = std::move(new_filter);
 
 		// Remove the TopN operator
 		plan = std::move(top_n.children[0]);

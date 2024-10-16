@@ -1,0 +1,69 @@
+require vss
+
+statement ok
+SELECT setseed(0.1337);
+
+statement ok
+CREATE TABLE queries (id INT, embedding FLOAT[3]);
+
+statement ok
+INSERT INTO queries VALUES (1, [5, 5, 5]::FLOAT[3]), (2, [42, 42, 42]::FLOAT[3]);
+
+statement ok
+CREATE TABLE items (id INT, embedding FLOAT[3]);
+
+statement ok
+INSERT INTO items SELECT i, [random(), random(), random()]::FLOAT[3] FROM range(1, 10000) as r(i);
+
+query II rowsort scan_result
+SELECT queries.id as id, nbr
+FROM queries, LATERAL (
+	SELECT items.id as nbr, array_distance(items.embedding, queries.embedding) as dist
+	FROM items
+	ORDER BY dist
+	LIMIT 3
+);
+----
+1	1243
+1	4885
+1	9309
+2	1243
+2	4885
+2	9309
+
+query II rowsort group_result
+SELECT queries.id as id, list(nbr ORDER BY dist, nbr)
+FROM queries, LATERAL (
+	SELECT items.id as nbr, array_distance(queries.embedding, items.embedding) as dist
+	FROM items
+	ORDER BY dist
+	LIMIT 3
+) GROUP BY id;
+----
+1	[4885, 1243, 9309]
+2	[4885, 1243, 9309]
+
+
+# Now create an index on the items table
+statement ok
+CREATE INDEX items_embedding_idx ON items USING hnsw(embedding);
+
+query II rowsort scan_result
+SELECT queries.id as id, nbr
+FROM queries, LATERAL (
+	SELECT items.id as nbr, array_distance(items.embedding, queries.embedding) as dist
+	FROM items
+	ORDER BY dist
+	LIMIT 3
+);
+----
+
+query II rowsort group_result
+SELECT queries.id as id, list(nbr ORDER BY dist, nbr)
+FROM queries, LATERAL (
+	SELECT items.id as nbr, array_distance(queries.embedding, items.embedding) as dist
+	FROM items
+	ORDER BY dist
+	LIMIT 3
+) GROUP BY id;
+----

@@ -113,13 +113,21 @@ OperatorResultType PhysicalHNSWIndexJoin::Execute(ExecutionContext &context, Dat
 	auto &state = ostate.Cast<HNSWIndexJoinState>();
 	auto &transcation = DuckTransaction::Get(context.client, table.catalog);
 
-	// TODO: dont flatten
 	input.Flatten();
+
+	// The first 0..inner_column_ids.size() columns are the inner table columns
+	const auto MATCH_COLUMN_OFFSET = inner_column_ids.size();
+	// The next column is the row number
+	const auto OUTER_COLUMN_OFFSET = MATCH_COLUMN_OFFSET + 1;
+	// The rest of the columns are the outer table columns
 
 	auto &rhs_vector_vector = input.data[outer_vector_column];
 	auto &rhs_vector_child = ArrayVector::GetEntry(rhs_vector_vector);
 	const auto rhs_vector_size = ArrayType::GetSize(rhs_vector_vector.GetType());
 	const auto rhs_vector_ptr = FlatVector::GetData<float>(rhs_vector_child);
+
+	// We mimic the window row_number() operator here and output the row number in each batch, basically.
+	const auto row_number_vector = FlatVector::GetData<idx_t>(chunk.data[MATCH_COLUMN_OFFSET]);
 
 	hnsw_index.ResetMultiScan(*state.index_state);
 
@@ -134,7 +142,9 @@ OperatorResultType PhysicalHNSWIndexJoin::Execute(ExecutionContext &context, Dat
 		// Scan the index for row ids
 		const auto match_count = hnsw_index.ExecuteMultiScan(*state.index_state, rhs_vector_data, limit);
 		for (idx_t i = 0; i < match_count; i++) {
-			state.match_sel.set_index(output_idx++, batch_idx);
+			state.match_sel.set_index(output_idx, batch_idx);
+			row_number_vector[output_idx] = i + 1; // Note: 1-indexed!
+			output_idx++;
 		}
 	}
 
@@ -144,7 +154,7 @@ OperatorResultType PhysicalHNSWIndexJoin::Execute(ExecutionContext &context, Dat
 	table.GetStorage().Fetch(transcation, chunk, state.phyiscal_column_ids, row_ids, output_idx, state.fetch_state);
 
 	// Now slice the chunk so that we include the rhs too
-	chunk.Slice(input, state.match_sel, output_idx, state.phyiscal_column_ids.size());
+	chunk.Slice(input, state.match_sel, output_idx, OUTER_COLUMN_OFFSET);
 
 	// Set the cardinality
 	chunk.SetCardinality(output_idx);
@@ -220,6 +230,9 @@ void LogicalHNSWIndexJoin::ResolveTypes() {
 		}
 	}
 
+	// Always add the row_number after the inner columns
+	types.emplace_back(LogicalType::BIGINT);
+
 	// Also add the types of the right hand side
 	auto &right_types = children[0]->types;
 	types.insert(types.end(), right_types.begin(), right_types.end());
@@ -236,6 +249,10 @@ vector<ColumnBinding> LogicalHNSWIndexJoin::GetLeftBindings() {
 			result.emplace_back(table_index, proj_id);
 		}
 	}
+
+	// Always add the row number last
+	result.emplace_back(table_index, inner_column_ids.size());
+
 	return result;
 }
 
@@ -550,6 +567,14 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 		replacer.replacement_bindings.emplace_back(old_binding,
 		                                           ColumnBinding(projection_table_index, new_binding_idx++));
 	}
+
+	// Also add the window expression to the projection last. We will replace this with a reference to the index join
+	// in the next inlining step
+	ColumnBinding window_binding(window.window_index, 0);
+	projection_expressions.push_back(make_uniq<BoundColumnRefExpression>(LogicalType::BIGINT, window_binding));
+	replacer.replacement_bindings.emplace_back(window_binding,
+	                                           ColumnBinding(projection_table_index, new_binding_idx++));
+
 	auto new_projection = make_uniq<LogicalProjection>(projection_table_index, std::move(projection_expressions));
 
 	// Replace all previous references with our new projection
@@ -583,12 +608,12 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 			expr = inner_expr->Copy();
 			// These can still reference the delim_get, but we replace them in the next step.
 		}
-		// Special case: the window row number expression. Is not used, but maybe we add it to the index scan as a third
-		// column export.
+
+		// Special case: the window row number expression. Forward this to the index join
 		else if (ref.binding.table_index == window.window_index) {
-			// Just return a constant for now...
-			// TODO: Fix this!
-			expr = make_uniq<BoundConstantExpression>(Value::BIGINT(1337));
+			// The special "row_number" expression is always the last column of the index_join itself
+			ColumnBinding index_row_number_binding(index_join->table_index, index_join->inner_column_ids.size());
+			expr = make_uniq<BoundColumnRefExpression>(LogicalType::BIGINT, index_row_number_binding);
 		}
 	}
 
