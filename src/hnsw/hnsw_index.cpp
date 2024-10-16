@@ -431,7 +431,7 @@ void HNSWIndex::Construct(DataChunk &input, Vector &row_ids, idx_t thread_idx) {
 		// Now we can be sure that we have enough space in the index
 		auto lock = rwlock.GetSharedLock();
 		for (idx_t out_idx = 0; out_idx < count; out_idx++) {
-			if(FlatVector::IsNull(vec_vec, out_idx)) {
+			if (FlatVector::IsNull(vec_vec, out_idx)) {
 				// Dont add nulls
 				continue;
 			}

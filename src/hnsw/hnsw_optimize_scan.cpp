@@ -15,7 +15,6 @@
 #include "hnsw/hnsw_index.hpp"
 #include "hnsw/hnsw_index_scan.hpp"
 
-
 namespace duckdb {
 
 //-----------------------------------------------------------------------------
@@ -79,7 +78,7 @@ public:
 			return false;
 		}
 
-		if(get.dynamic_filters && get.dynamic_filters->HasFilters()) {
+		if (get.dynamic_filters && get.dynamic_filters->HasFilters()) {
 			// Cant push down!
 			return false;
 		}
@@ -152,7 +151,7 @@ public:
 		get.has_estimated_cardinality = cardinality->has_estimated_cardinality;
 		get.estimated_cardinality = cardinality->estimated_cardinality;
 		get.bind_data = std::move(bind_data);
-		if(get.table_filters.filters.empty()) {
+		if (get.table_filters.filters.empty()) {
 
 			// Remove the TopN operator
 			plan = std::move(top_n.children[0]);
@@ -166,11 +165,11 @@ public:
 
 		auto new_filter = make_uniq<LogicalFilter>();
 		auto &column_ids = get.GetColumnIds();
-		for(const auto &entry : get.table_filters.filters) {
+		for (const auto &entry : get.table_filters.filters) {
 			idx_t column_id = entry.first;
 			auto &type = get.returned_types[column_id];
 			bool found = false;
-			for(idx_t i = 0; i < column_ids.size(); i++) {
+			for (idx_t i = 0; i < column_ids.size(); i++) {
 				if (column_ids[i] == column_id) {
 					column_id = i;
 					found = true;

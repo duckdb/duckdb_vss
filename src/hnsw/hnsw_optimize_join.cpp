@@ -572,7 +572,8 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	// in the next inlining step
 	ColumnBinding window_binding(window.window_index, 0);
 	projection_expressions.push_back(make_uniq<BoundColumnRefExpression>(LogicalType::BIGINT, window_binding));
-	replacer.replacement_bindings.emplace_back(window_binding, ColumnBinding(projection_table_index, new_binding_idx++));
+	replacer.replacement_bindings.emplace_back(window_binding,
+	                                           ColumnBinding(projection_table_index, new_binding_idx++));
 
 	auto new_projection = make_uniq<LogicalProjection>(projection_table_index, std::move(projection_expressions));
 
