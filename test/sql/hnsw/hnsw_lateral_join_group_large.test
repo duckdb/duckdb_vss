@@ -1,0 +1,114 @@
+require vss
+
+statement ok
+SELECT setseed(0.1337);
+
+statement ok
+CREATE TABLE queries (id INT, embedding FLOAT[3]);
+
+statement ok
+INSERT INTO queries SELECT i, [random(), random(), random()]::FLOAT[3] FROM range(1, 1000) as r(i);
+
+statement ok
+CREATE TABLE items (id INT, embedding FLOAT[3]);
+
+statement ok
+INSERT INTO items SELECT i, [random(), random(), random()]::FLOAT[3] FROM range(1, 1000) as r(i);
+
+
+# Sanity check, total cardinality
+query I
+SELECT COUNT(*)
+FROM queries, LATERAL (
+	SELECT
+		items.id as nbr,
+		array_distance(items.embedding, queries.embedding) as dist
+	FROM items
+	ORDER BY dist
+	LIMIT 3
+);
+----
+2997
+
+query I rowsort result_total
+SELECT COUNT(*)
+FROM queries, LATERAL (
+	SELECT
+		items.id as nbr,
+		array_distance(items.embedding, queries.embedding) as dist
+	FROM items
+	ORDER BY dist
+	LIMIT 3
+);
+----
+
+# Sanity check, groups of 3
+query I rowsort result_count
+SELECT count(*) FROM (
+	SELECT queries.id as id, any_value(nbr)
+	FROM queries, LATERAL (
+		SELECT
+			items.id as nbr,
+			array_distance(items.embedding, queries.embedding) as dist
+		FROM items
+		ORDER BY dist
+		LIMIT 3
+	) GROUP BY queries.id
+)
+----
+
+
+query II rowsort result_scan
+SELECT queries.id as id, list(nbr ORDER BY nbr) result_scan
+	FROM queries, LATERAL (
+		SELECT
+			items.id as nbr,
+			array_distance(items.embedding, queries.embedding) as dist
+		FROM items
+		ORDER BY dist
+		LIMIT 3
+	) GROUP BY queries.id
+----
+
+
+# Now create an index
+statement ok
+CREATE INDEX items_embedding_idx ON items USING hnsw(embedding);
+
+query I rowsort result_total
+SELECT COUNT(*)
+FROM queries, LATERAL (
+	SELECT
+		items.id as nbr,
+		array_distance(items.embedding, queries.embedding) as dist
+	FROM items
+	ORDER BY dist
+	LIMIT 3
+);
+----
+
+query I rowsort result_count
+SELECT count(*) FROM (
+	SELECT queries.id as id, any_value(nbr)
+	FROM queries, LATERAL (
+		SELECT
+			items.id as nbr,
+			array_distance(items.embedding, queries.embedding) as dist
+		FROM items
+		ORDER BY dist
+		LIMIT 3
+	) GROUP BY queries.id
+)
+----
+
+query II rowsort result_scan
+SELECT queries.id as id, list(nbr ORDER BY nbr)
+	FROM queries, LATERAL (
+		SELECT
+			items.id as nbr,
+			array_distance(items.embedding, queries.embedding) as dist
+		FROM items
+		ORDER BY dist
+		LIMIT 3
+	) GROUP BY queries.id
+----
