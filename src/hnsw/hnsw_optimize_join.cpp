@@ -337,9 +337,6 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	MATCH_OPERATOR(delim_join.children[1], LOGICAL_GET, 0);
 	auto outer_get_ptr = &delim_join.children[1];
 	auto &outer_get = (*outer_get_ptr)->Cast<LogicalGet>();
-	if (outer_get.function.name != "seq_scan") {
-		return false;
-	}
 
 	// branch
 	// There might not be a projection here if we keep the distance function.
