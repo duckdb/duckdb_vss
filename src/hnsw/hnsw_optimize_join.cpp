@@ -137,12 +137,12 @@ OperatorResultType PhysicalHNSWIndexJoin::Execute(ExecutionContext &context, Dat
 	for (idx_t batch_idx = 0; batch_idx < batch_count; batch_idx++, state.input_idx++) {
 
 		// Get the next batch
-		const auto rhs_vector_data = rhs_vector_ptr + batch_idx * rhs_vector_size;
+		const auto rhs_vector_data = rhs_vector_ptr + state.input_idx * rhs_vector_size;
 
 		// Scan the index for row ids
 		const auto match_count = hnsw_index.ExecuteMultiScan(*state.index_state, rhs_vector_data, limit);
 		for (idx_t i = 0; i < match_count; i++) {
-			state.match_sel.set_index(output_idx, batch_idx);
+			state.match_sel.set_index(output_idx, state.input_idx);
 			row_number_vector[output_idx] = i + 1; // Note: 1-indexed!
 			output_idx++;
 		}
@@ -337,9 +337,6 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 	MATCH_OPERATOR(delim_join.children[1], LOGICAL_GET, 0);
 	auto outer_get_ptr = &delim_join.children[1];
 	auto &outer_get = (*outer_get_ptr)->Cast<LogicalGet>();
-	if (outer_get.function.name != "seq_scan") {
-		return false;
-	}
 
 	// branch
 	// There might not be a projection here if we keep the distance function.
