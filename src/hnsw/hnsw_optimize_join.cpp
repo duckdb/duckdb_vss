@@ -185,6 +185,7 @@ public:
 	vector<ColumnBinding> GetLeftBindings();
 	vector<ColumnBinding> GetRightBindings();
 	unique_ptr<PhysicalOperator> CreatePlan(ClientContext &context, PhysicalPlanGenerator &generator) override;
+	idx_t EstimateCardinality(ClientContext &context) override;
 
 public:
 	idx_t table_index;
@@ -275,7 +276,8 @@ vector<ColumnBinding> LogicalHNSWIndexJoin::GetColumnBindings() {
 
 unique_ptr<PhysicalOperator> LogicalHNSWIndexJoin::CreatePlan(ClientContext &context,
                                                               PhysicalPlanGenerator &generator) {
-	auto result = make_uniq<PhysicalHNSWIndexJoin>(types, 0, table, hnsw_index, limit);
+
+	auto result = make_uniq<PhysicalHNSWIndexJoin>(types, estimated_cardinality, table, hnsw_index, limit);
 	result->limit = limit;
 	result->inner_column_ids = inner_column_ids;
 	result->inner_projection_ids = inner_projection_ids;
@@ -286,6 +288,19 @@ unique_ptr<PhysicalOperator> LogicalHNSWIndexJoin::CreatePlan(ClientContext &con
 	result->children.push_back(generator.CreatePlan(std::move(children[0])));
 
 	return std::move(result);
+}
+
+idx_t LogicalHNSWIndexJoin::EstimateCardinality(ClientContext &context) {
+	// The cardinality of the HNSW index join is the cardinality of the outer table
+	if (has_estimated_cardinality) {
+		return estimated_cardinality;
+	}
+
+	const auto child_cardinality = children[0]->EstimateCardinality(context);
+	estimated_cardinality = child_cardinality * limit;
+	has_estimated_cardinality = true;
+
+	return estimated_cardinality;
 }
 
 //------------------------------------------------------------------------------
@@ -305,6 +320,14 @@ public:
 HNSWIndexJoinOptimizer::HNSWIndexJoinOptimizer() {
 	optimize_function = Optimize;
 }
+
+class CardinalityResetter final : public LogicalOperatorVisitor {
+public:
+	void VisitOperator(LogicalOperator &op) override {
+		op.has_estimated_cardinality = false;
+		VisitOperatorChildren(op);
+	}
+};
 
 bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context, unique_ptr<LogicalOperator> &root,
                                          unique_ptr<LogicalOperator> &plan) {
@@ -638,6 +661,10 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 
 	// Swap the plan
 	plan = std::move(new_projection);
+
+	CardinalityResetter resetter;
+	resetter.VisitOperator(*root);
+	root->EstimateCardinality(context);
 
 	return true;
 }
