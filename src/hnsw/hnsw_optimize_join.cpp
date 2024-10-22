@@ -335,9 +335,15 @@ HNSWIndexJoinOptimizer::HNSWIndexJoinOptimizer() {
 
 class CardinalityResetter final : public LogicalOperatorVisitor {
 public:
+	ClientContext &context;
+
+	explicit CardinalityResetter(ClientContext &context_p) : context(context_p) {
+	}
+
 	void VisitOperator(LogicalOperator &op) override {
 		op.has_estimated_cardinality = false;
 		VisitOperatorChildren(op);
+		op.EstimateCardinality(context);
 	}
 };
 
@@ -674,6 +680,9 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 
 	// Swap the plan
 	plan = std::move(new_projection);
+
+	CardinalityResetter cardinality_resetter(context);
+	cardinality_resetter.VisitOperator(*root);
 
 	return true;
 }
