@@ -26,9 +26,9 @@ jobs:
     name: Build extension binaries
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.1.2
     with:
-      vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
       duckdb_version: v1.1.2
       extension_name: vss
+      ci_tools_version: main
 
   duckdb-stable-deploy:
     name: Deploy extension binaries
