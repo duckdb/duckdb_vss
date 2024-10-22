@@ -45,6 +45,7 @@ public:
 	unique_ptr<OperatorState> GetOperatorState(ExecutionContext &context) const override;
 	OperatorResultType Execute(ExecutionContext &context, DataChunk &input, DataChunk &chunk,
 	                           GlobalOperatorState &gstate, OperatorState &state) const override;
+	InsertionOrderPreservingMap<string> ParamsToString() const override;
 
 public:
 	DuckTableEntry &table;
@@ -167,6 +168,17 @@ OperatorResultType PhysicalHNSWIndexJoin::Execute(ExecutionContext &context, Dat
 	return OperatorResultType::HAVE_MORE_OUTPUT;
 }
 
+InsertionOrderPreservingMap<string> PhysicalHNSWIndexJoin::ParamsToString() const {
+	InsertionOrderPreservingMap<string> result;
+	auto table_name = table.name;
+	auto index_name = hnsw_index.name;
+	result.insert("table", table_name);
+	result.insert("index", index_name);
+	result.insert("limit", to_string(limit));
+	SetEstimatedCardinality(result, estimated_cardinality);
+	return result;
+}
+
 //------------------------------------------------------------------------------
 // Logical Operator
 //------------------------------------------------------------------------------
@@ -185,6 +197,7 @@ public:
 	vector<ColumnBinding> GetLeftBindings();
 	vector<ColumnBinding> GetRightBindings();
 	unique_ptr<PhysicalOperator> CreatePlan(ClientContext &context, PhysicalPlanGenerator &generator) override;
+	idx_t EstimateCardinality(ClientContext &context) override;
 
 public:
 	idx_t table_index;
@@ -275,7 +288,8 @@ vector<ColumnBinding> LogicalHNSWIndexJoin::GetColumnBindings() {
 
 unique_ptr<PhysicalOperator> LogicalHNSWIndexJoin::CreatePlan(ClientContext &context,
                                                               PhysicalPlanGenerator &generator) {
-	auto result = make_uniq<PhysicalHNSWIndexJoin>(types, 0, table, hnsw_index, limit);
+
+	auto result = make_uniq<PhysicalHNSWIndexJoin>(types, estimated_cardinality, table, hnsw_index, limit);
 	result->limit = limit;
 	result->inner_column_ids = inner_column_ids;
 	result->inner_projection_ids = inner_projection_ids;
@@ -286,6 +300,19 @@ unique_ptr<PhysicalOperator> LogicalHNSWIndexJoin::CreatePlan(ClientContext &con
 	result->children.push_back(generator.CreatePlan(std::move(children[0])));
 
 	return std::move(result);
+}
+
+idx_t LogicalHNSWIndexJoin::EstimateCardinality(ClientContext &context) {
+	// The cardinality of the HNSW index join is the cardinality of the outer table
+	if (has_estimated_cardinality) {
+		return estimated_cardinality;
+	}
+
+	const auto child_cardinality = children[0]->EstimateCardinality(context);
+	estimated_cardinality = child_cardinality * limit;
+	has_estimated_cardinality = true;
+
+	return estimated_cardinality;
 }
 
 //------------------------------------------------------------------------------
@@ -305,6 +332,20 @@ public:
 HNSWIndexJoinOptimizer::HNSWIndexJoinOptimizer() {
 	optimize_function = Optimize;
 }
+
+class CardinalityResetter final : public LogicalOperatorVisitor {
+public:
+	ClientContext &context;
+
+	explicit CardinalityResetter(ClientContext &context_p) : context(context_p) {
+	}
+
+	void VisitOperator(LogicalOperator &op) override {
+		op.has_estimated_cardinality = false;
+		VisitOperatorChildren(op);
+		op.EstimateCardinality(context);
+	}
+};
 
 bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context, unique_ptr<LogicalOperator> &root,
                                          unique_ptr<LogicalOperator> &plan) {
@@ -635,9 +676,13 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 
 	// Add the new projection on top of the join
 	new_projection->children.emplace_back(std::move(index_join));
+	new_projection->EstimateCardinality(context);
 
 	// Swap the plan
 	plan = std::move(new_projection);
+
+	CardinalityResetter cardinality_resetter(context);
+	cardinality_resetter.VisitOperator(*root);
 
 	return true;
 }
