@@ -45,6 +45,7 @@ public:
 	unique_ptr<OperatorState> GetOperatorState(ExecutionContext &context) const override;
 	OperatorResultType Execute(ExecutionContext &context, DataChunk &input, DataChunk &chunk,
 	                           GlobalOperatorState &gstate, OperatorState &state) const override;
+	InsertionOrderPreservingMap<string> ParamsToString() const override;
 
 public:
 	DuckTableEntry &table;
@@ -165,6 +166,17 @@ OperatorResultType PhysicalHNSWIndexJoin::Execute(ExecutionContext &context, Dat
 	}
 
 	return OperatorResultType::HAVE_MORE_OUTPUT;
+}
+
+InsertionOrderPreservingMap<string> PhysicalHNSWIndexJoin::ParamsToString() const {
+	InsertionOrderPreservingMap<string> result;
+	auto table_name = table.name;
+	auto index_name = hnsw_index.name;
+	result.insert("table", table_name);
+	result.insert("index", index_name);
+	result.insert("limit", to_string(limit));
+	SetEstimatedCardinality(result, estimated_cardinality);
+	return result;
 }
 
 //------------------------------------------------------------------------------
@@ -658,13 +670,10 @@ bool HNSWIndexJoinOptimizer::TryOptimize(Binder &binder, ClientContext &context,
 
 	// Add the new projection on top of the join
 	new_projection->children.emplace_back(std::move(index_join));
+	new_projection->EstimateCardinality(context);
 
 	// Swap the plan
 	plan = std::move(new_projection);
-
-	CardinalityResetter resetter;
-	resetter.VisitOperator(*root);
-	root->EstimateCardinality(context);
 
 	return true;
 }
