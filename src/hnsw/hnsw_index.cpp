@@ -246,6 +246,7 @@ const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIN
 
 const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIND_MAP = {
     {static_cast<uint8_t>(LogicalTypeId::FLOAT), unum::usearch::scalar_kind_t::f32_k},
+	/* TODO: Add the rest of these later
     {static_cast<uint8_t>(LogicalTypeId::DOUBLE), unum::usearch::scalar_kind_t::f64_k},
     {static_cast<uint8_t>(LogicalTypeId::TINYINT), unum::usearch::scalar_kind_t::i8_k},
     {static_cast<uint8_t>(LogicalTypeId::SMALLINT), unum::usearch::scalar_kind_t::i16_k},
@@ -254,7 +255,9 @@ const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIN
     {static_cast<uint8_t>(LogicalTypeId::UTINYINT), unum::usearch::scalar_kind_t::u8_k},
     {static_cast<uint8_t>(LogicalTypeId::USMALLINT), unum::usearch::scalar_kind_t::u16_k},
     {static_cast<uint8_t>(LogicalTypeId::UINTEGER), unum::usearch::scalar_kind_t::u32_k},
-    {static_cast<uint8_t>(LogicalTypeId::UBIGINT), unum::usearch::scalar_kind_t::u64_k}};
+    {static_cast<uint8_t>(LogicalTypeId::UBIGINT), unum::usearch::scalar_kind_t::u64_k}
+    */
+};
 
 unique_ptr<HNSWIndexStats> HNSWIndex::GetStats() {
 	auto lock = rwlock.GetExclusiveLock();
@@ -671,6 +674,7 @@ void HNSWModule::RegisterIndex(DatabaseInstance &db) {
 		                                input.unbound_expressions, input.db, input.options, input.storage_info);
 		return std::move(res);
 	};
+	index_type.create_plan = HNSWIndex::CreatePlan;
 
 	// Register scan option
 	db.config.AddExtensionOption("hnsw_ef_search",
