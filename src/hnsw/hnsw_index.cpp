@@ -246,7 +246,7 @@ const case_insensitive_map_t<unum::usearch::metric_kind_t> HNSWIndex::METRIC_KIN
 
 const unordered_map<uint8_t, unum::usearch::scalar_kind_t> HNSWIndex::SCALAR_KIND_MAP = {
     {static_cast<uint8_t>(LogicalTypeId::FLOAT), unum::usearch::scalar_kind_t::f32_k},
-	/* TODO: Add the rest of these later
+    /* TODO: Add the rest of these later
     {static_cast<uint8_t>(LogicalTypeId::DOUBLE), unum::usearch::scalar_kind_t::f64_k},
     {static_cast<uint8_t>(LogicalTypeId::TINYINT), unum::usearch::scalar_kind_t::i8_k},
     {static_cast<uint8_t>(LogicalTypeId::SMALLINT), unum::usearch::scalar_kind_t::i16_k},
@@ -675,6 +675,11 @@ void HNSWModule::RegisterIndex(DatabaseInstance &db) {
 		return std::move(res);
 	};
 	index_type.create_plan = HNSWIndex::CreatePlan;
+
+	// Register persistence option
+	db.config.AddExtensionOption("hnsw_enable_experimental_persistence",
+	                             "experimental: enable creating HNSW indexes in persistent databases",
+	                             LogicalType::BOOLEAN, Value::BOOLEAN(false));
 
 	// Register scan option
 	db.config.AddExtensionOption("hnsw_ef_search",

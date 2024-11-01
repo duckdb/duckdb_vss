@@ -10,7 +10,6 @@ public:
 		RegisterIndex(db);
 		RegisterIndexScan(db);
 		RegisterIndexPragmas(db);
-		RegisterPlanIndexCreate(db);
 		RegisterMacros(db);
 
 		// Optimizers
@@ -25,7 +24,6 @@ private:
 	static void RegisterIndexScan(DatabaseInstance &db);
 	static void RegisterMultiScan(DatabaseInstance &db);
 	static void RegisterIndexPragmas(DatabaseInstance &db);
-	static void RegisterPlanIndexCreate(DatabaseInstance &db);
 	static void RegisterMacros(DatabaseInstance &db);
 	static void RegisterTopKOptimizer(DatabaseInstance &db);
 

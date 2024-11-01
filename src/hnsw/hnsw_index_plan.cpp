@@ -12,7 +12,6 @@
 #include "hnsw/hnsw_index.hpp"
 #include "hnsw/hnsw_index_physical_create.hpp"
 
-
 namespace duckdb {
 
 unique_ptr<PhysicalOperator> HNSWIndex::CreatePlan(PlanIndexInput &input) {
@@ -103,14 +102,16 @@ unique_ptr<PhysicalOperator> HNSWIndex::CreatePlan(PlanIndexInput &input) {
 
 	vector<LogicalType> new_column_types;
 	vector<unique_ptr<Expression>> select_list;
-	for (auto & expression : create_index.expressions) {
+	for (auto &expression : create_index.expressions) {
 		new_column_types.push_back(expression->return_type);
 		select_list.push_back(std::move(expression));
 	}
 	new_column_types.emplace_back(LogicalType::ROW_TYPE);
-	select_list.push_back(make_uniq<BoundReferenceExpression>(LogicalType::ROW_TYPE, create_index.info->scan_types.size() - 1));
+	select_list.push_back(
+	    make_uniq<BoundReferenceExpression>(LogicalType::ROW_TYPE, create_index.info->scan_types.size() - 1));
 
-	auto projection = make_uniq<PhysicalProjection>(new_column_types, std::move(select_list), create_index.estimated_cardinality);
+	auto projection =
+	    make_uniq<PhysicalProjection>(new_column_types, std::move(select_list), create_index.estimated_cardinality);
 	projection->children.push_back(std::move(input.table_scan));
 
 	// filter operator for IS_NOT_NULL on each key column
@@ -120,34 +121,24 @@ unique_ptr<PhysicalOperator> HNSWIndex::CreatePlan(PlanIndexInput &input) {
 	for (idx_t i = 0; i < new_column_types.size() - 1; i++) {
 		filter_types.push_back(new_column_types[i]);
 		auto is_not_null_expr =
-			make_uniq<BoundOperatorExpression>(ExpressionType::OPERATOR_IS_NOT_NULL, LogicalType::BOOLEAN);
+		    make_uniq<BoundOperatorExpression>(ExpressionType::OPERATOR_IS_NOT_NULL, LogicalType::BOOLEAN);
 		auto bound_ref = make_uniq<BoundReferenceExpression>(new_column_types[i], i);
 		is_not_null_expr->children.push_back(std::move(bound_ref));
 		filter_select_list.push_back(std::move(is_not_null_expr));
 	}
 
-	auto null_filter =
-		make_uniq<PhysicalFilter>(std::move(filter_types), std::move(filter_select_list), create_index.estimated_cardinality);
+	auto null_filter = make_uniq<PhysicalFilter>(std::move(filter_types), std::move(filter_select_list),
+	                                             create_index.estimated_cardinality);
 	null_filter->types.emplace_back(LogicalType::ROW_TYPE);
 	null_filter->children.push_back(std::move(projection));
 
-	auto physical_create_index =
-		make_uniq<PhysicalCreateHNSWIndex>(create_index.types, create_index.table, create_index.info->column_ids, std::move(create_index.info),
-										   std::move(create_index.unbound_expressions), create_index.estimated_cardinality);
+	auto physical_create_index = make_uniq<PhysicalCreateHNSWIndex>(
+	    create_index.types, create_index.table, create_index.info->column_ids, std::move(create_index.info),
+	    std::move(create_index.unbound_expressions), create_index.estimated_cardinality);
 
 	physical_create_index->children.push_back(std::move(null_filter));
 
 	return std::move(physical_create_index);
-}
-
-//-------------------------------------------------------------
-// Register
-//-------------------------------------------------------------
-void HNSWModule::RegisterPlanIndexCreate(DatabaseInstance &db) {
-	// Register the optimizer extension
-	db.config.AddExtensionOption("hnsw_enable_experimental_persistence",
-	                             "experimental: enable creating HNSW indexes in persistent databases",
-	                             LogicalType::BOOLEAN, Value::BOOLEAN(false));
 }
 
 } // namespace duckdb
