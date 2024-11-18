@@ -1,0 +1,13 @@
+2024-11-18T23:54:39+01:00
+Running build/example
+Run on (10 X 24 MHz CPU s)
+CPU Caches:
+  L1 Data 64 KiB
+  L1 Instruction 128 KiB
+  L2 Unified 4096 KiB (x10)
+Load Average: 3.09, 6.53, 6.35
+dry_run: true
+--------------------------------------------------------------------
+Benchmark                          Time             CPU   Iterations
+--------------------------------------------------------------------
+BM_SearchBeforeClustering    5413124 ns      5412000 ns            1
