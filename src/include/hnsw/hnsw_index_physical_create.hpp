@@ -1,5 +1,6 @@
 #pragma once
 #include "duckdb/execution/physical_operator.hpp"
+#include "duckdb/execution/progress_data.hpp"
 #include "duckdb/storage/data_table.hpp"
 
 namespace duckdb {
@@ -52,7 +53,7 @@ public:
 		return true;
 	}
 
-	double GetSinkProgress(ClientContext &context, GlobalSinkState &gstate, double source_progress) const override;
+	ProgressData GetSinkProgress(ClientContext &context, GlobalSinkState &gstate, ProgressData source_progress) const override;
 };
 
 } // namespace duckdb
