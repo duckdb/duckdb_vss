@@ -305,17 +305,21 @@ SinkFinalizeType PhysicalCreateHNSWIndex::Finalize(Pipeline &pipeline, Event &ev
 	return SinkFinalizeType::READY;
 }
 
-double PhysicalCreateHNSWIndex::GetSinkProgress(ClientContext &context, GlobalSinkState &gstate,
-                                                double source_progress) const {
+ProgressData PhysicalCreateHNSWIndex::GetSinkProgress(ClientContext &context, GlobalSinkState &gstate,
+                                                ProgressData source_progress) const {
 	// The "source_progress" is not relevant for CREATE INDEX statements
+	ProgressData res;
+
 	const auto &state = gstate.Cast<CreateHNSWIndexGlobalState>();
 	// First half of the progress is appending to the collection
 	if (!state.is_building) {
-		return 50.0 *
-		       MinValue(1.0, static_cast<double>(state.loaded_count) / static_cast<double>(estimated_cardinality));
+		res.done = state.loaded_count + 0.0;
+		res.total = estimated_cardinality + estimated_cardinality;
+	} else {
+		res.done = state.loaded_count + state.built_count;
+		res.total = state.loaded_count + state.loaded_count;
 	}
-	// Second half is actually building the index
-	return 50.0 + (50.0 * static_cast<double>(state.built_count) / static_cast<double>(state.loaded_count));
+	return res;
 }
 
 } // namespace duckdb

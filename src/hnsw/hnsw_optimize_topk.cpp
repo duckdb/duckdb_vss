@@ -198,7 +198,7 @@ public:
 			auto &type = get.returned_types[column_id];
 			bool found = false;
 			for (idx_t i = 0; i < column_ids.size(); i++) {
-				if (column_ids[i] == column_id) {
+				if (column_ids[i].GetPrimaryIndex() == column_id) {
 					column_id = i;
 					found = true;
 					break;

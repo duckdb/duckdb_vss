@@ -29,7 +29,7 @@ BindInfo HNSWIndexScanBindInfo(const optional_ptr<FunctionData> bind_data_p) {
 struct HNSWIndexScanGlobalState : public GlobalTableFunctionState {
 	ColumnFetchState fetch_state;
 	TableScanState local_storage_state;
-	vector<storage_t> column_ids;
+	vector<StorageIndex> column_ids;
 
 	// Index scan state
 	unique_ptr<IndexScanState> index_state;
@@ -52,7 +52,7 @@ static unique_ptr<GlobalTableFunctionState> HNSWIndexScanInitGlobal(ClientContex
 		if (id != DConstants::INVALID_INDEX) {
 			col_id = bind_data.table.GetColumn(LogicalIndex(id)).StorageOid();
 		}
-		result->column_ids.push_back(col_id);
+		result->column_ids.emplace_back(col_id);
 	}
 
 	// Initialize the storage scan state
@@ -123,9 +123,13 @@ unique_ptr<NodeStatistics> HNSWIndexScanCardinality(ClientContext &context, cons
 //-------------------------------------------------------------------------
 // ToString
 //-------------------------------------------------------------------------
-static string HNSWIndexScanToString(const FunctionData *bind_data_p) {
-	auto &bind_data = bind_data_p->Cast<HNSWIndexScanBindData>();
-	return bind_data.table.name + " (HNSW INDEX SCAN : " + bind_data.index.GetIndexName() + ")";
+static InsertionOrderPreservingMap<string> HNSWIndexScanToString(TableFunctionToStringInput &input) {
+	D_ASSERT(input.bind_data);
+	InsertionOrderPreservingMap<string> result;
+	auto &bind_data = input.bind_data->Cast<HNSWIndexScanBindData>();
+	result["Table"] = bind_data.table.name;
+	result["HSNW Index"] = bind_data.index.GetIndexName();
+	return result;
 }
 
 //-------------------------------------------------------------------------
@@ -141,7 +145,6 @@ TableFunction HNSWIndexScanFunction::GetFunction() {
 	func.pushdown_complex_filter = nullptr;
 	func.to_string = HNSWIndexScanToString;
 	func.table_scan_progress = nullptr;
-	func.get_batch_index = nullptr;
 	func.projection_pushdown = true;
 	func.filter_pushdown = false;
 	func.get_bind_info = HNSWIndexScanBindInfo;

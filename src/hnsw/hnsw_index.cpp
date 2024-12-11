@@ -581,7 +581,7 @@ void HNSWIndex::VerifyAllocations(IndexLock &state) {
 // Can rewrite index expression?
 //------------------------------------------------------------------------------
 static void TryBindIndexExpressionInternal(Expression &expr, idx_t table_idx, const vector<column_t> &index_columns,
-                                           const vector<column_t> &table_columns, bool &success, bool &found) {
+                                           const vector<ColumnIndex> &table_columns, bool &success, bool &found) {
 
 	if (expr.type == ExpressionType::BOUND_COLUMN_REF) {
 		found = true;
@@ -592,7 +592,7 @@ static void TryBindIndexExpressionInternal(Expression &expr, idx_t table_idx, co
 
 		const auto referenced_column = index_columns[ref.binding.column_index];
 		for (idx_t i = 0; i < table_columns.size(); i++) {
-			if (table_columns[i] == referenced_column) {
+			if (table_columns[i].GetPrimaryIndex() == referenced_column) {
 				ref.binding.column_index = i;
 				return;
 			}
